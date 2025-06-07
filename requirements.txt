@@ -1,5 +1,6 @@
 
 viam-sdk==0.47.0
 
+streamdeck
 typing-extensions
-streamdeck==0.9.7
+

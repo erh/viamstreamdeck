@@ -14,6 +14,7 @@ from viam.resource.base import ResourceBase
 from viam.resource.easy_resource import EasyResource
 from viam.resource.types import Model, ModelFamily
 from viam.services.generic import *
+from viam.components.camera import CameraClient
 from viam.utils import ValueTypes, struct_to_dict
 from viam.logging import getLogger
 
@@ -150,8 +151,79 @@ async def quick_test():
     c = {"brightness" : 100,
          "keys": [
              {
-                 "text": "foo",
+                 "text": "The",
                  "key": 0,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "cat",
+                 "key": 1,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "is",
+                 "key": 2,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "in",
+                 "key": 3,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "the",
+                 "key": 4,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "box.",
+                 "key": 5,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "cat",
+                 "key": 6,
+                 "color" : "purple",
+                 "component": "foo",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "cats",
+                 "key": 7,
+                 "color" : "purple",
                  "component": "foo",
                  "method": "do_command",
                  "args": {

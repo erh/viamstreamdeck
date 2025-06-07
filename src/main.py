@@ -1,5 +1,6 @@
 import asyncio
 from viam.module.module import Module
+
 try:
     from models.streamdeck_original import StreamdeckOriginal
 except ModuleNotFoundError:

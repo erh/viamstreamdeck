@@ -2,8 +2,8 @@
   "$schema": "https://dl.viam.dev/module.schema.json",
   "module_id": "erh:viam-streamdeck",
   "visibility": "public",
-  "url": "",
-  "description": "Modular generic service: streamdeck-original",
+  "url": "https://github.com/erh/viam-streamdeck/",
+  "description": "for integrating viam with elgato streamdeck",
   "models": [
     {
       "api": "rdk:service:generic",

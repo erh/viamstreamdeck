@@ -109,9 +109,12 @@ class StreamdeckOriginal(Generic, EasyResource):
         keys = get_keys(attrs)
         for k in keys:
             self.logger.info("key {}".format(k))
-            image = PILHelper.create_key_image(self.deck)
+            color = "black"
+            if "color" in k:
+                color = k["color"]
+            image = PILHelper.create_key_image(self.deck, background=color)
             draw = ImageDraw.Draw(image)
-            draw.text((image.width / 2, image.height / 2), text=k["text"], anchor="ms", fill="white")
+            draw.text((image.width / 2, image.height / 2), text=k["text"], anchor="ms", fill="white", font_size=15)
             kf = PILHelper.to_native_key_format(self.deck, image)
             self.deck.set_key_image(int(k["key"]), kf)
         self.keys = keys
@@ -159,11 +162,23 @@ async def quick_test():
                  "text": "bar",
                  "key": 8,
                  "component": "bar",
+                 "color" : "blue",
+                 "method": "do_command",
+                 "args": {
+                     "x ": 1
+                 }
+             },
+             {
+                 "text": "eliot",
+                 "key": 11,
+                 "component": "bar",
+                 "color" : "green",
                  "method": "do_command",
                  "args": {
                      "x ": 1
                  }
              }
+
          ],
          }
     print(extract_components(c["keys"]))

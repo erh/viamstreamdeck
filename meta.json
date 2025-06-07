@@ -1,0 +1,30 @@
+{
+  "$schema": "https://dl.viam.dev/module.schema.json",
+  "module_id": "erh:viam-streamdeck",
+  "visibility": "public",
+  "url": "",
+  "description": "Modular generic service: streamdeck-original",
+  "models": [
+    {
+      "api": "rdk:service:generic",
+      "model": "erh:viam-streamdeck:streamdeck-original",
+      "short_description": "Provide a short (100 characters or less) description of this model here",
+      "markdown_link": "README.md#model-erhviam-streamdeckstreamdeck-original"
+    }
+  ],
+  "applications": null,
+  "markdown_link": "README.md",
+  "entrypoint": "dist/main",
+  "first_run": "",
+  "build": {
+    "build": "./build.sh",
+    "setup": "./setup.sh",
+    "path": "dist/archive.tar.gz",
+    "arch": [
+      "linux/amd64",
+      "linux/arm64",
+      "darwin/arm64",
+      "windows/amd64"
+    ]
+  }
+}

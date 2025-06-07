@@ -14,9 +14,19 @@ from viam.resource.base import ResourceBase
 from viam.resource.easy_resource import EasyResource
 from viam.resource.types import Model, ModelFamily
 from viam.services.generic import *
-from viam.components.camera import CameraClient
 from viam.utils import ValueTypes, struct_to_dict
 from viam.logging import getLogger
+
+#temp hack
+from viam.components.arm import ArmClient
+from viam.components.base import BaseClient
+from viam.components.button import ButtonClient
+from viam.components.camera import CameraClient
+from viam.components.gripper import GripperClient
+from viam.components.motor import MotorClient
+from viam.components.sensor import SensorClient
+from viam.components.switch import SwitchClient
+
 
 logger = getLogger(__name__)
 
@@ -28,16 +38,6 @@ def get_keys(attrs):
         return attrs["keys"]
     return []
 
-def extract_components(keys) -> Sequence[str]:
-    d = {}
-    for k in keys:
-        d[k["component"]] = True
-
-    a = []
-    for k in d:
-        a.append(k)
-    return a
-
 class StreamdeckOriginal(Generic, EasyResource):
     # To enable debug-level logging, either run viam-server with the --debug option,
     # or configure your resource/machine to display debug logs.
@@ -48,6 +48,7 @@ class StreamdeckOriginal(Generic, EasyResource):
     def __init__(self, x):
         super().__init__(x)
         self.deck = None
+        self.dependencies = None
     
     @classmethod
     def new(cls, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]) -> Self:
@@ -55,12 +56,28 @@ class StreamdeckOriginal(Generic, EasyResource):
 
     @classmethod
     def validate_config(cls, config: ComponentConfig) -> Tuple[Sequence[str], Sequence[str]]:
-        attsrs = get_attributes(config)
-        keys = get_keys(attsrs)
-        cs = extract_components(keys)
-        logger.info("components: {}".format(cs))
-        return cs, []
+        attrs = get_attributes(config)
+        return cls.validate_attrs(attrs)
+
+    @classmethod
+    def validate_attrs(cls, attrs) -> Tuple[Sequence[str], Sequence[str]]:
+        keys = get_keys(attrs)
+
+        componentNames = []
+        for k in keys:
+            for req in ["component", "key", "text", "method", "args"]:
+                if req not in k:
+                    raise ValidationError("need a component for all keys, missing %s for %s" % (req, str(k)))
+            
+            cn = k["component"]
+            if cn not in componentNames:
+                componentNames.append(cn)
+
+            knumber = int(k["key"])
+
+        return componentNames, []
         
+    
     def find_deck(self):
         if self.deck:
             return
@@ -101,11 +118,7 @@ class StreamdeckOriginal(Generic, EasyResource):
         logger.info("setting brightness to: {}".format(b))
         self.deck.set_brightness(b)
 
-        if dependencies:
-            print(dependencies)
-            for x in dependencies:
-                print(x)
-                print(dependencies[x])
+        self.dependencies = dependencies
                 
         keys = get_keys(attrs)
         for k in keys:
@@ -120,19 +133,35 @@ class StreamdeckOriginal(Generic, EasyResource):
             self.deck.set_key_image(int(k["key"]), kf)
         self.keys = keys
 
-    def key_press(self, key_info):
-        self.logger.info("key pres {}".format(key_info))
-        
     def key_change_callback(self, deck, key, state):
         if not state:
             return
         for k in self.keys:
-            if key == k["key"]:
+            if key == int(k["key"]):
                 self.key_press(k)
                 return
         self.logger.info("no mapping for key: {}".format(key))
 
 
+    def key_press(self, key_info):
+        self.logger.info("key press {}".format(key_info))
+        cn = key_info["component"]
+        if self.dependencies is None:
+            self.logger.info("no dependencies at all, testing?")
+            return
+        for d in self.dependencies:
+            if str(d).endswith("/" + cn): #TODO is this correct???
+                return self.key_press_component(key_info, d, self.dependencies[d])
+        self.logger.error("could not find dependency for %s" % cn)
+        
+
+    def key_press_component(self, key_info, theName, theResource):
+        self.logger.info("key press component {} {} {}".format(key_info, theName, theResource))
+        m = theResource.__getattribute__(key_info["method"])
+        result = asyncio.run(m(*key_info["args"]))
+        self.logger.info("result {}".format(result))
+
+        
     async def do_command(self,command: Mapping[str, ValueTypes],*,timeout: Optional[float] = None,**kwargs) -> Mapping[str, ValueTypes]:
         logger.error("`do_command` is not implemented")
         raise NotImplementedError()
@@ -145,9 +174,14 @@ class StreamdeckOriginal(Generic, EasyResource):
         await super().close()
 
 
-
+class SillyForTest:
+    def __init__(self, x):
+        self.x = x
+        
+    async def do_command(self,command):
+        return {"x" : self.x, "cmd" : command}
+        
 async def quick_test():
-    sd = StreamdeckOriginal("x")
     c = {"brightness" : 100,
          "keys": [
              {
@@ -253,8 +287,9 @@ async def quick_test():
 
          ],
          }
-    print(extract_components(c["keys"]))
-    sd.reconfigure2(None, c, None)
+    sd = StreamdeckOriginal("x")
+    print(StreamdeckOriginal.validate_attrs(c))
+    sd.reconfigure2(None, c, {"asd/bar" : SillyForTest(5), "asd/foo" : SillyForTest(7)})
     await asyncio.sleep(5)
     await sd.close()
 

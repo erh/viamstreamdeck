@@ -151,7 +151,8 @@ class StreamdeckOriginal(Generic, EasyResource):
             return
         for d in self.dependencies:
             if str(d).endswith("/" + cn): #TODO is this correct???
-                return self.key_press_component(key_info, d, self.dependencies[d])
+                self.logger.info("found callback")
+                return await self.key_press_component(key_info, d, self.dependencies[d])
         self.logger.error("could not find dependency for %s" % cn)
         
 

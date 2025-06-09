@@ -98,7 +98,7 @@ class StreamdeckOriginal(Generic, EasyResource):
                 deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
             ))
 
-            deck.set_key_callback(self.key_change_callback)
+            deck.set_key_callback_async(self.key_change_callback)
             self.deck = deck
 
             return

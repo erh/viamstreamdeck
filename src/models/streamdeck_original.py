@@ -144,14 +144,12 @@ class StreamdeckOriginal(Generic, EasyResource):
 
 
     async def key_press(self, key_info):
-        self.logger.info("key press {}".format(key_info))
         cn = key_info["component"]
         if self.dependencies is None:
             self.logger.info("no dependencies at all, testing?")
             return
         for d in self.dependencies:
             if str(d).endswith("/" + cn): #TODO is this correct???
-                self.logger.info("found callback")
                 return await self.key_press_component(key_info, d, self.dependencies[d])
         self.logger.error("could not find dependency for %s" % cn)
         

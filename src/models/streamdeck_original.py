@@ -133,17 +133,17 @@ class StreamdeckOriginal(Generic, EasyResource):
             self.deck.set_key_image(int(k["key"]), kf)
         self.keys = keys
 
-    def key_change_callback(self, deck, key, state):
+    async def key_change_callback(self, deck, key, state):
         if not state:
             return
         for k in self.keys:
             if key == int(k["key"]):
-                self.key_press(k)
+                await self.key_press(k)
                 return
         self.logger.info("no mapping for key: {}".format(key))
 
 
-    def key_press(self, key_info):
+    async def key_press(self, key_info):
         self.logger.info("key press {}".format(key_info))
         cn = key_info["component"]
         if self.dependencies is None:
@@ -155,10 +155,10 @@ class StreamdeckOriginal(Generic, EasyResource):
         self.logger.error("could not find dependency for %s" % cn)
         
 
-    def key_press_component(self, key_info, theName, theResource):
+    async def key_press_component(self, key_info, theName, theResource):
         self.logger.info("key press component {} {} {}".format(key_info, theName, theResource))
         m = theResource.__getattribute__(key_info["method"])
-        result = asyncio.run(m(*key_info["args"]))
+        result = await m(*key_info["args"])
         self.logger.info("result {}".format(result))
 
         

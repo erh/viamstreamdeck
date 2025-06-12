@@ -44,6 +44,19 @@ func realMain() error {
 		return err
 	}
 
+	things, _, err := conf.Validate("")
+	if err != nil {
+		return err
+	}
+
+	for _, t := range things {
+		n := generic.Named(t)
+		deps[n] = &TestThing{
+			name:   n,
+			logger: logger.Sublogger(t),
+		}
+	}
+
 	sd, err := viamstreamdeck.NewStreamDeck(ctx, generic.Named("foo"), deps, streamdeck.Plus, conf, logger)
 	if err != nil {
 		return err
@@ -52,4 +65,21 @@ func realMain() error {
 
 	time.Sleep(time.Second * 10)
 	return nil
+}
+
+type TestThing struct {
+	resource.AlwaysRebuild
+	resource.TriviallyCloseable
+
+	name   resource.Name
+	logger logging.Logger
+}
+
+func (tt *TestThing) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	tt.logger.Infof("TestThing::DoCommand args: %v", cmd)
+	return nil, nil
+}
+
+func (tt *TestThing) Name() resource.Name {
+	return tt.name
 }

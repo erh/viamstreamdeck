@@ -4,7 +4,10 @@ go 1.23.9
 
 require (
 	github.com/dh1tw/streamdeck v0.1.10
+	github.com/erh/vmodutils v0.2.4
+	go.uber.org/multierr v1.11.0
 	go.viam.com/rdk v0.79.0
+	golang.org/x/image v0.19.0
 )
 
 require (
@@ -50,7 +53,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/edaniels/golog v0.0.0-20230215213219-28954395e8d0 // indirect
 	github.com/edaniels/lidario v0.0.0-20220607182921-5879aa7b96dd // indirect
-	github.com/erh/vmodutils v0.2.4 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -159,7 +161,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.viam.com/api v0.1.438 // indirect
 	go.viam.com/test v1.2.4 // indirect
@@ -167,7 +168,6 @@ require (
 	golang.org/x/arch v0.18.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
-	golang.org/x/image v0.19.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
@@ -190,4 +190,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc1
+replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc2

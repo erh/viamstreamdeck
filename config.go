@@ -7,6 +7,7 @@ import (
 
 type KeyConfig struct {
 	Text      string
+	TextColor string
 	Key       int
 	Color     string
 	Component string

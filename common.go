@@ -84,42 +84,50 @@ func snakeToCamel(s string) string {
 	return result
 }
 
+func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
+	_, ok := findDep(sdc.deps, k.Component)
+	if !ok {
+		return fmt.Errorf("can't find component [%s]", k.Component)
+	}
+
+	if snakeToCamel(k.Method) != "DoCommand" {
+		return fmt.Errorf("only support DoCommand now, not %s", k.Method)
+	}
+
+	if k.Image != "" {
+		img, ok := assetImages[k.Image]
+		if ok {
+			if k.Text != "" {
+				return sdc.sd.WriteTextOnImage(
+					k.Key,
+					img,
+					[]streamdeck.TextLine{{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")}},
+				)
+			}
+			return sdc.sd.FillImage(k.Key, img)
+		}
+		return fmt.Errorf("unknown image [%s]", k.Image)
+	}
+
+	if k.Text != "" {
+		tb := streamdeck.TextButton{
+			Lines: []streamdeck.TextLine{
+				{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")},
+			},
+			BgColor: getColor(k.Color, "black"),
+		}
+		return sdc.sd.WriteText(k.Key, tb)
+	}
+
+	return fmt.Errorf("nothing to display for key %v", k)
+}
+
 func (sdc *streamdeckComponent) updateKeys(keys []KeyConfig) error {
 	for _, k := range keys {
-
-		_, ok := findDep(sdc.deps, k.Component)
-		if !ok {
-			return fmt.Errorf("can't find component [%s]", k.Component)
+		err := sdc.updateKey(k)
+		if err != nil {
+			return err
 		}
-
-		if snakeToCamel(k.Method) != "DoCommand" {
-			return fmt.Errorf("only support DoCommand now, not %s", k.Method)
-		}
-
-		if k.Image != "" {
-			img, ok := assetImages[k.Image]
-			if ok {
-				if k.Text != "" {
-					return fmt.Errorf("can't overlay text over image, yet, fix me")
-				}
-				return sdc.sd.FillImage(k.Key, img)
-			}
-			return fmt.Errorf("unknown image [%s]", k.Image)
-		} else if k.Text != "" {
-			tb := streamdeck.TextButton{
-				Lines: []streamdeck.TextLine{
-					{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")},
-				},
-				BgColor: getColor(k.Color, "black"),
-			}
-			err := sdc.sd.WriteText(k.Key, tb)
-			if err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("nothing to display for key %v", k)
-		}
-
 		sdc.keys[k.Key] = k
 	}
 	return nil

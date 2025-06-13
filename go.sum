@@ -237,8 +237,8 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/go-control-plane v0.9.9-0.20201210154907-fd9021fe5dad/go.mod h1:cXg6YxExXjJnVBQHBLXeUAgxn2UodCpnH306RInaBQk=
 github.com/envoyproxy/go-control-plane v0.9.10-0.20210907150352-cf90f659a021/go.mod h1:AFq3mo9L8Lqqiid3OhADV3RfLJnjiw63cSpi+fDTRC0=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
-github.com/erh/streamdeck v0.2.0-rc3 h1:zXJhNuIRZ8+a9qK7hzl/uJEjGzTcRMU2Jhr2KcbQu1A=
-github.com/erh/streamdeck v0.2.0-rc3/go.mod h1:SQECgOP/GiH1MphNsN+Sbo3jq6hoqCUN3BxSTkDs56c=
+github.com/erh/streamdeck v0.2.0-rc4 h1:il5SykbX887/u4lR2ozZmRwGn0TWYX1LYkf0ey5K+fA=
+github.com/erh/streamdeck v0.2.0-rc4/go.mod h1:SQECgOP/GiH1MphNsN+Sbo3jq6hoqCUN3BxSTkDs56c=
 github.com/erh/vmodutils v0.2.4 h1:eua3ZxacC1UC0lTtq70suv/HvmXvE+T29WexDzfzztw=
 github.com/erh/vmodutils v0.2.4/go.mod h1:rjRis8MxKZx7wqZhIByjCgzRg5W1r5fBsGmWtVIjx3U=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6baUTXGLOoWe4PQhGxaX0KpnayAqC48p4=

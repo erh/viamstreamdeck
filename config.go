@@ -9,7 +9,7 @@ type KeyConfig struct {
 	Key int
 
 	Text      string
-	TextColor string
+	TextColor string `json:"text_color"`
 
 	Color string
 	Image string

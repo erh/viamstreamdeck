@@ -190,4 +190,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc3
+replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc4

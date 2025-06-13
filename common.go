@@ -96,15 +96,28 @@ func (sdc *streamdeckComponent) updateKeys(keys []KeyConfig) error {
 			return fmt.Errorf("only support DoCommand now, not %s", k.Method)
 		}
 
-		tb := streamdeck.TextButton{
-			Lines: []streamdeck.TextLine{
-				{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")},
-			},
-			BgColor: getColor(k.Color, "black"),
-		}
-		err := sdc.sd.WriteText(k.Key, tb)
-		if err != nil {
-			return err
+		if k.Image != "" {
+			img, ok := assetImages[k.Image]
+			if ok {
+				if k.Text != "" {
+					return fmt.Errorf("can't overlay text over image, yet, fix me")
+				}
+				return sdc.sd.FillImage(k.Key, img)
+			}
+			return fmt.Errorf("unknown image [%s]", k.Image)
+		} else if k.Text != "" {
+			tb := streamdeck.TextButton{
+				Lines: []streamdeck.TextLine{
+					{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")},
+				},
+				BgColor: getColor(k.Color, "black"),
+			}
+			err := sdc.sd.WriteText(k.Key, tb)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("nothing to display for key %v", k)
 		}
 
 		sdc.keys[k.Key] = k

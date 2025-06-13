@@ -10,8 +10,6 @@ import (
 	"go.viam.com/rdk/resource"
 	"go.viam.com/rdk/services/generic"
 
-	"github.com/dh1tw/streamdeck"
-
 	"github.com/erh/viamstreamdeck"
 	"github.com/erh/vmodutils"
 )
@@ -57,7 +55,13 @@ func realMain() error {
 		}
 	}
 
-	sd, err := viamstreamdeck.NewStreamDeck(ctx, generic.Named("foo"), deps, streamdeck.Plus, conf, logger)
+	ms := viamstreamdeck.FindAttachedStreamDeck()
+	if ms == nil {
+		return fmt.Errorf("no streamdecks found")
+	}
+	logger.Infof("found streamdeck: %v", ms)
+
+	sd, err := viamstreamdeck.NewStreamDeck(ctx, generic.Named("foo"), deps, ms.Conf, conf, logger)
 	if err != nil {
 		return err
 	}

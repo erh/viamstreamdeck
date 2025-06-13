@@ -3,10 +3,12 @@ module github.com/erh/viamstreamdeck
 go 1.23.9
 
 require (
+	github.com/bearsh/hid v1.6.0
 	github.com/dh1tw/streamdeck v0.1.10
 	github.com/erh/vmodutils v0.2.4
 	go.uber.org/multierr v1.11.0
 	go.viam.com/rdk v0.79.0
+	go.viam.com/test v1.2.4
 	golang.org/x/image v0.19.0
 )
 
@@ -23,7 +25,6 @@ require (
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/bearsh/hid v1.6.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/bluenviron/gortsplib/v4 v4.8.0 // indirect
@@ -163,7 +164,6 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.viam.com/api v0.1.438 // indirect
-	go.viam.com/test v1.2.4 // indirect
 	go.viam.com/utils v0.1.145 // indirect
 	golang.org/x/arch v0.18.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
@@ -190,4 +190,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc2
+replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc3

@@ -6,10 +6,14 @@ import (
 )
 
 type KeyConfig struct {
+	Key int
+
 	Text      string
 	TextColor string
-	Key       int
-	Color     string
+
+	Color string
+	Image string
+
 	Component string
 	Method    string
 	Args      []interface{}

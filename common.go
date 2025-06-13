@@ -37,7 +37,7 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		sdConfig = streamdeck.Original2
 		sdc.sd, err = streamdeck.NewStreamDeck(sdConfig)
 	}
-		
+
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,16 @@ func snakeToCamel(s string) string {
 func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
 	_, ok := findDep(sdc.deps, k.Component)
 	if !ok {
-		return fmt.Errorf("can't find component [%s]", k.Component)
+		img, ok := assetImages["x.jpg"]
+		if !ok {
+			return fmt.Errorf("can't find dependency %s nore, the x image :(", k.Component)
+		}
+
+		return sdc.sd.WriteTextOnImage(
+			k.Key,
+			img,
+			[]streamdeck.TextLine{{Text: k.Component, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor("black", "black")}},
+		)
 	}
 
 	if snakeToCamel(k.Method) != "DoCommand" {

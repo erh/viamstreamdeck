@@ -42,12 +42,15 @@ func realMain() error {
 		return err
 	}
 
-	things, _, err := conf.Validate("")
+	_, things, err := conf.Validate("")
 	if err != nil {
 		return err
 	}
 
 	for _, t := range things {
+		if t == "NO" {
+			continue
+		}
 		n := generic.Named(t)
 		deps[n] = &TestThing{
 			name:   n,

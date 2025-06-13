@@ -49,5 +49,5 @@ func (c *Config) Validate(p string) ([]string, []string, error) {
 
 	}
 
-	return ret, nil, nil
+	return nil, ret, nil
 }

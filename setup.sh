@@ -1,2 +1,4 @@
 #!/bin/bash
-[[ "$OSTYPE" == "linux-gnu"* ]] && sudo apt update && sudo apt install -y libudev-dev
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    sudo apt update && sudo apt install -y libudev-dev
+fi

@@ -15,7 +15,10 @@ updaterdk:
 	go mod tidy
 
 module: $(BINARY) meta.json
-	tar czf module.tar.gz $(BINARY) meta.json
+	-mkdir dist # old hack	
+	cp $(BINARY) dist/main
+	tar czf module.tar.gz $(BINARY) meta.json dist/main
 
 bin:
 	-mkdir bin
+

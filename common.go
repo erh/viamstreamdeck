@@ -25,7 +25,6 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 
 	sdc := &streamdeckComponent{
 		name:   name,
-		conf:   conf,
 		logger: logger,
 		deps:   deps,
 		keys:   map[int]KeyConfig{},
@@ -62,7 +61,6 @@ type streamdeckComponent struct {
 	resource.AlwaysRebuild
 
 	name   resource.Name
-	conf   *Config
 	deps   resource.Dependencies
 	logger logging.Logger
 

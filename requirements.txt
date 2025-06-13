@@ -1,7 +1,0 @@
-
-viam-sdk==0.47.0
-
-streamdeck
-pillow
-typing-extensions
-

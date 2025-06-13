@@ -2,7 +2,7 @@
 
 Integration with Elgato StreamDeck
 
-## Model erh:viam-streamdeck:streamdeck-original
+## config
 
 ```json
 {

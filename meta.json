@@ -1,30 +1,42 @@
 {
-  "$schema": "https://dl.viam.dev/module.schema.json",
-  "module_id": "erh:viam-streamdeck",
-  "visibility": "public",
-  "url": "https://github.com/erh/viam-streamdeck/",
-  "description": "for integrating viam with elgato streamdeck",
-  "models": [
-    {
-      "api": "rdk:service:generic",
-      "model": "erh:viam-streamdeck:streamdeck-original",
-      "short_description": "Provide a short (100 characters or less) description of this model here",
-      "markdown_link": "README.md#model-erhviam-streamdeckstreamdeck-original"
+    "$schema": "https://dl.viam.dev/module.schema.json",
+    "module_id": "erh:viam-streamdeck",
+    "visibility": "public",
+    "url": "https://github.com/erh/viam-streamdeck/",
+    "description": "for integrating viam with elgato streamdeck",
+    "models": [
+        {
+            "api": "rdk:service:generic",
+            "model": "erh:viam-streamdeck:streamdeck-any",
+            "markdown_link": "README.md#config"
+        },
+        {
+            "api": "rdk:service:generic",
+            "model": "erh:viam-streamdeck:streamdeck-plus",
+            "markdown_link": "README.md#config"
+        },
+        {
+            "api": "rdk:service:generic",
+            "model": "erh:viam-streamdeck:streamdeck-original",
+            "markdown_link": "README.md#config"
+        },
+        {
+            "api": "rdk:service:generic",
+            "model": "erh:viam-streamdeck:streamdeck-original2",
+            "markdown_link": "README.md#config"
+        }
+    ],
+    "applications": null,
+    "markdown_link": "README.md",
+    "entrypoint": "./bin/viamstreamdeck",
+    "first_run": "",
+    "build": {
+        "build": "make module",
+        "path": "module.tar.gz",
+        "arch": [
+            "linux/amd64",
+            "linux/arm64",
+            "darwin/arm64"
+        ]
     }
-  ],
-  "applications": null,
-  "markdown_link": "README.md",
-  "entrypoint": "dist/main",
-  "first_run": "",
-  "build": {
-    "build": "./build.sh",
-    "setup": "./setup.sh",
-    "path": "dist/archive.tar.gz",
-    "arch": [
-      "linux/amd64",
-      "linux/arm64",
-      "darwin/arm64",
-      "windows/amd64"
-    ]
-  }
 }

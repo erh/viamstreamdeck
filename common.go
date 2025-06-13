@@ -32,6 +32,12 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 	}
 
 	sdc.sd, err = streamdeck.NewStreamDeck(sdConfig)
+	if err != nil && sdConfig == streamdeck.Original {
+		// original vs original2 is confusing, try it
+		sdConfig = streamdeck.Original2
+		sdc.sd, err = streamdeck.NewStreamDeck(sdConfig)
+	}
+		
 	if err != nil {
 		return nil, err
 	}

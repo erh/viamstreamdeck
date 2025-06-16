@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
+	"sync"
 
 	"golang.org/x/image/colornames"
 
@@ -41,6 +42,11 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		return nil, err
 	}
 
+	err = sdc.updateBrightness(conf.Brightness)
+	if err != nil {
+		return nil, err
+	}
+
 	err = sdc.updateKeys(conf.Keys)
 	if err != nil {
 		return nil, err
@@ -57,15 +63,44 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 	return sdc, nil
 }
 
-type streamdeckComponent struct {
-	resource.AlwaysRebuild
+func (sdc *streamdeckComponent) Reconfigure(ctx context.Context, deps resource.Dependencies, conf resource.Config) error {
+	newConf, err := resource.NativeConfig[*Config](conf)
+	if err != nil {
+		return err
+	}
 
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	sdc.deps = deps
+
+	err = sdc.updateBrightness(newConf.Brightness)
+	if err != nil {
+		return err
+	}
+
+	return sdc.updateKeys(newConf.Keys)
+}
+
+type streamdeckComponent struct {
 	name   resource.Name
-	deps   resource.Dependencies
 	logger logging.Logger
 
-	sd   *streamdeck.StreamDeck
-	keys map[int]KeyConfig
+	sd *streamdeck.StreamDeck
+
+	configLock sync.Mutex
+	deps       resource.Dependencies
+	keys       map[int]KeyConfig
+}
+
+func (sdc *streamdeckComponent) updateBrightness(level int) error {
+	if level <= 0 {
+		return nil
+	}
+	if level > 100 {
+		level = 100
+	}
+	return sdc.sd.SetBrightness(uint16(level))
 }
 
 func findDep(deps resource.Dependencies, n string) (resource.Resource, bool) {
@@ -147,6 +182,9 @@ func (sdc *streamdeckComponent) updateKeys(keys []KeyConfig) error {
 }
 
 func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck.State, e streamdeck.Event, which int) error {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
 	k, ok := sdc.keys[which]
 	if !ok {
 		return fmt.Errorf("no key for %v", e)

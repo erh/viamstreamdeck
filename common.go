@@ -15,6 +15,21 @@ import (
 	"go.viam.com/rdk/resource"
 
 	"github.com/dh1tw/streamdeck"
+
+	_ "go.viam.com/rdk/components/arm"
+	_ "go.viam.com/rdk/components/base"
+	_ "go.viam.com/rdk/components/button"
+	_ "go.viam.com/rdk/components/generic"
+	_ "go.viam.com/rdk/components/movementsensor"
+	_ "go.viam.com/rdk/components/sensor"
+	_ "go.viam.com/rdk/components/camera"
+	_ "go.viam.com/rdk/components/board"
+	_ "go.viam.com/rdk/components/gripper"
+	_ "go.viam.com/rdk/components/motor"
+	_ "go.viam.com/rdk/services/generic"
+	_ "go.viam.com/rdk/services/motion"
+	_ "go.viam.com/rdk/services/vision"
+
 )
 
 func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Dependencies, sdConfig streamdeck.Config, conf *Config, logger logging.Logger) (resource.Resource, error) {

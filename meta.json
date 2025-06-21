@@ -8,23 +8,30 @@
         {
             "api": "rdk:service:generic",
             "model": "erh:viam-streamdeck:streamdeck-any",
-            "markdown_link": "README.md#config"
+            "markdown_link": "README.md#simple-config"
         },
         {
             "api": "rdk:service:generic",
             "model": "erh:viam-streamdeck:streamdeck-plus",
-            "markdown_link": "README.md#config"
+            "markdown_link": "README.md#simple-config"
         },
         {
             "api": "rdk:service:generic",
             "model": "erh:viam-streamdeck:streamdeck-original",
-            "markdown_link": "README.md#config"
+            "markdown_link": "README.md#simple-config"
         },
         {
             "api": "rdk:service:generic",
             "model": "erh:viam-streamdeck:streamdeck-original2",
-            "markdown_link": "README.md#config"
+            "markdown_link": "README.md#simple-config"
+        },
+        {
+            "api": "rdk:service:generic",
+            "model": "erh:viam-streamdeck:pickup",
+            "short_description" : "streamdeck app for picking things up",
+            "markdown_link": "README.md#pickup"
         }
+
     ],
     "applications": null,
     "markdown_link": "README.md",

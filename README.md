@@ -2,7 +2,7 @@
 
 Integration with Elgato StreamDeck
 
-## config
+## simple-config
 
 ```json
 {
@@ -20,5 +20,20 @@ Integration with Elgato StreamDeck
              },
              ...
              }
+}
+```
+
+## pickup
+
+This is a simple streamdeck app for picking things up
+
+```
+{
+  "brightness" : 100, // optional, 0 -> 100
+  "arm" : "...",
+  "gripper" : "...",
+  "finder" : "...", // vision service that supports GetObjectPointClouds
+  "motion" : "...",  // motion service, could be 'builtin'
+  "watch_pose" : "...", // an arm-saver position from where to watch
 }
 ```

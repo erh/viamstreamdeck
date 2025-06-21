@@ -11,6 +11,7 @@ import (
 func main() {
 
 	arr := []resource.APIModel{
+		{generic.API, viamstreamdeck.PickupModel},
 		{generic.API, viamstreamdeck.ModelAny},
 	}
 

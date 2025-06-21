@@ -27,7 +27,7 @@ import (
 	_ "go.viam.com/rdk/services/vision"
 )
 
-func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Dependencies, sdConfig streamdeck.Config, conf *Config, logger logging.Logger) (resource.Resource, error) {
+func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Dependencies, ms *ModelSetup, conf *Config, logger logging.Logger) (resource.Resource, error) {
 
 	_, _, err := conf.Validate("")
 	if err != nil {
@@ -37,15 +37,17 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 	sdc := &streamdeckComponent{
 		name:   name,
 		logger: logger,
+		ms:     ms,
 		deps:   deps,
 		keys:   map[int]KeyConfig{},
 	}
 
-	sdc.sd, err = streamdeck.NewStreamDeck(sdConfig)
-	if err != nil && sdConfig == streamdeck.Original {
+	sdc.sd, err = streamdeck.NewStreamDeck(ms.Conf)
+	if err != nil && ms == ModelOriginal {
 		// original vs original2 is confusing, try it
-		sdConfig = streamdeck.Original2
-		sdc.sd, err = streamdeck.NewStreamDeck(sdConfig)
+		ms = ModelOriginal2
+		sdc.ms = ModelOriginal2
+		sdc.sd, err = streamdeck.NewStreamDeck(ms.Conf)
 	}
 
 	if err != nil {
@@ -95,6 +97,7 @@ func (sdc *streamdeckComponent) Reconfigure(ctx context.Context, deps resource.D
 type streamdeckComponent struct {
 	name   resource.Name
 	logger logging.Logger
+	ms     *ModelSetup
 
 	sd *streamdeck.StreamDeck
 
@@ -139,7 +142,7 @@ func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
 				return sdc.sd.WriteTextOnImage(
 					k.Key,
 					img,
-					[]streamdeck.TextLine{{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")}},
+					sdc.ms.SimpleText(k.Text, k.TextColor),
 				)
 			}
 			return sdc.sd.FillImage(k.Key, img)
@@ -148,13 +151,7 @@ func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
 	}
 
 	if k.Text != "" {
-		tb := streamdeck.TextButton{
-			Lines: []streamdeck.TextLine{
-				{Text: k.Text, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor(k.TextColor, "white")},
-			},
-			BgColor: getColor(k.Color, "black"),
-		}
-		return sdc.sd.WriteText(k.Key, tb)
+		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor))
 	}
 
 	return fmt.Errorf("nothing to display for key %v", k)

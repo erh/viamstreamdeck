@@ -5,7 +5,7 @@ go 1.23.9
 require (
 	github.com/bearsh/hid v1.6.0
 	github.com/dh1tw/streamdeck v0.1.10
-	github.com/erh/vmodutils v0.2.4
+	github.com/erh/vmodutils v0.2.6
 	go.uber.org/multierr v1.11.0
 	go.viam.com/rdk v0.79.0
 	go.viam.com/test v1.2.4
@@ -200,4 +200,4 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc4
+replace github.com/dh1tw/streamdeck => github.com/erh/streamdeck v0.2.0-rc5

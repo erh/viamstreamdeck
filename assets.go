@@ -64,9 +64,6 @@ func loadImages() (map[string]image.Image, error) {
 		filename := filepath.Base(path)
 		imageMap[filename] = img
 
-		fmt.Printf("Loaded image: %s (dimensions: %dx%d)\n",
-			filename, img.Bounds().Dx(), img.Bounds().Dy())
-
 		return nil
 	})
 

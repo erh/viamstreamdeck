@@ -19,10 +19,14 @@ type ModelSetup struct {
 	Conf  streamdeck.Config
 }
 
-var Models = []ModelSetup{
-	{NamespaceFamily.WithModel("streamdeck-plus"), streamdeck.Plus},
-	{NamespaceFamily.WithModel("streamdeck-original"), streamdeck.Original},
-	{NamespaceFamily.WithModel("streamdeck-original2"), streamdeck.Original2},
+var ModelPlus = &ModelSetup{NamespaceFamily.WithModel("streamdeck-plus"), streamdeck.Plus}
+var ModelOriginal = &ModelSetup{NamespaceFamily.WithModel("streamdeck-original"), streamdeck.Original}
+var ModelOriginal2 = &ModelSetup{NamespaceFamily.WithModel("streamdeck-original2"), streamdeck.Original2}
+
+var Models = []*ModelSetup{
+	ModelPlus,
+	ModelOriginal,
+	ModelOriginal2,
 }
 
 var ModelAny = NamespaceFamily.WithModel("streamdeck-any")
@@ -37,7 +41,7 @@ func init() {
 					return nil, err
 				}
 
-				return NewStreamDeck(ctx, conf.ResourceName(), deps, ms.Conf, newConf, logger)
+				return NewStreamDeck(ctx, conf.ResourceName(), deps, ms, newConf, logger)
 			},
 		})
 	}
@@ -54,7 +58,7 @@ func init() {
 				return nil, err
 			}
 
-			return NewStreamDeck(ctx, conf.ResourceName(), deps, ms.Conf, newConf, logger)
+			return NewStreamDeck(ctx, conf.ResourceName(), deps, ms, newConf, logger)
 		},
 	})
 
@@ -64,7 +68,7 @@ func FindAttachedStreamDeck() *ModelSetup {
 	for _, ms := range Models {
 		devices := hid.Enumerate(streamdeck.VendorID, ms.Conf.ProductID)
 		if len(devices) > 0 {
-			return &ms
+			return ms
 		}
 	}
 	return nil

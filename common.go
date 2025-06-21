@@ -5,6 +5,8 @@ import (
 	"image/color"
 	"strings"
 
+	"github.com/dh1tw/streamdeck"
+
 	"golang.org/x/image/colornames"
 
 	"go.viam.com/rdk/resource"
@@ -42,4 +44,65 @@ func getColor(want, def string) color.Color {
 	}
 
 	panic(fmt.Errorf("default color didn't work [%s]", def))
+}
+
+func (ms *ModelSetup) SimpleText(text string, clr string) []streamdeck.TextLine {
+	return ms.simpleText(text, clr, 20)
+}
+
+func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64) []streamdeck.TextLine {
+	if fontSize <= 0 {
+		panic(fontSize)
+	}
+
+	maxLine := int(1.6 * float64(ms.Conf.ButtonSize) / fontSize)
+
+	lines := []string{""}
+
+	for _, s := range strings.Split(text, " ") {
+
+		if len(s) >= maxLine && fontSize > 4 {
+			return ms.simpleText(text, clr, fontSize-2)
+		}
+
+		last := lines[len(lines)-1]
+
+		if last != "" && (len(last)+1+len(s)) > maxLine {
+			lines = append(lines, s)
+		} else {
+			if last == "" {
+				last = s
+			} else {
+				last = last + " " + s
+			}
+			lines[len(lines)-1] = last
+		}
+	}
+
+	if fontSize > 4 && len(lines) >= ms.Conf.ButtonSize/int(fontSize) {
+		return ms.simpleText(text, clr, fontSize-2)
+	}
+
+	tls := []streamdeck.TextLine{}
+
+	for idx, l := range lines {
+		tl := streamdeck.TextLine{
+			Text:      l,
+			PosX:      5,
+			PosY:      (idx * int(fontSize)),
+			FontSize:  fontSize,
+			FontColor: getColor(clr, "white"),
+		}
+		fmt.Printf("hi %v\n", tl)
+		tls = append(tls, tl)
+	}
+
+	return tls
+}
+
+func (ms *ModelSetup) SimpleTextButton(text string, bgColor, textClr string) streamdeck.TextButton {
+	return streamdeck.TextButton{
+		Lines:   ms.SimpleText(text, textClr),
+		BgColor: getColor(bgColor, "black"),
+	}
 }

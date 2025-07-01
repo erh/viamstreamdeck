@@ -5,7 +5,7 @@ go 1.23.9
 require (
 	github.com/bearsh/hid v1.6.0
 	github.com/dh1tw/streamdeck v0.1.10
-	github.com/erh/vmodutils v0.2.6
+	github.com/erh/vmodutils v0.2.9-rc0
 	go.uber.org/multierr v1.11.0
 	go.viam.com/rdk v0.79.0
 	go.viam.com/test v1.2.4

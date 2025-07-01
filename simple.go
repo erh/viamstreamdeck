@@ -12,6 +12,8 @@ import (
 
 	"github.com/dh1tw/streamdeck"
 
+	"github.com/erh/vmodutils"
+
 	_ "go.viam.com/rdk/components/arm"
 	_ "go.viam.com/rdk/components/base"
 	_ "go.viam.com/rdk/components/board"
@@ -117,7 +119,7 @@ func (sdc *streamdeckComponent) updateBrightness(level int) error {
 }
 
 func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
-	_, ok := findDep(sdc.deps, k.Component)
+	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok {
 		img, ok := assetImages["x.jpg"]
 		if !ok {
@@ -177,7 +179,7 @@ func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck
 		return fmt.Errorf("no key for %v", e)
 	}
 
-	r, ok := findDep(sdc.deps, k.Component)
+	r, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok {
 		return fmt.Errorf("no resource %s for %s", k.Component, e)
 	}

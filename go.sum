@@ -241,6 +241,8 @@ github.com/erh/streamdeck v0.2.0-rc5 h1:6+NV+bC2F0jf7E7EeaFd+s3ElS/sYgKaQgNAYMKa
 github.com/erh/streamdeck v0.2.0-rc5/go.mod h1:SQECgOP/GiH1MphNsN+Sbo3jq6hoqCUN3BxSTkDs56c=
 github.com/erh/vmodutils v0.2.6 h1:rTzPEs4/sM1NkGLbcQUiKXvyDtz2/kbh/ruDS6zqdLI=
 github.com/erh/vmodutils v0.2.6/go.mod h1:rjRis8MxKZx7wqZhIByjCgzRg5W1r5fBsGmWtVIjx3U=
+github.com/erh/vmodutils v0.2.9-rc0 h1:v35S83Dtn3bHIdybz/0DDLmY+3jzvnBFovEYU+k7e0k=
+github.com/erh/vmodutils v0.2.9-rc0/go.mod h1:VubsGMtN3I3hmf6/gi/qFx6CQGK17cN7tbRKJd+VeSc=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6baUTXGLOoWe4PQhGxaX0KpnayAqC48p4=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f/go.mod h1:vw97MGsxSvLiUE2X8qFplwetxpGLQrlU1Q9AUEIzCaM=
 github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 h1:Yzb9+7DPaBjB8zlTR87/ElzFsnQfuHnVUVqpZZIcV5Y=

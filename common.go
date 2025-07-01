@@ -8,18 +8,7 @@ import (
 	"github.com/dh1tw/streamdeck"
 
 	"golang.org/x/image/colornames"
-
-	"go.viam.com/rdk/resource"
 )
-
-func findDep(deps resource.Dependencies, n string) (resource.Resource, bool) {
-	for nn, r := range deps {
-		if nn.ShortName() == n {
-			return r, true
-		}
-	}
-	return nil, false
-}
 
 func snakeToCamel(s string) string {
 	parts := strings.Split(s, "_")

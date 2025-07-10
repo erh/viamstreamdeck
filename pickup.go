@@ -53,27 +53,33 @@ type PickupConfig struct {
 }
 
 func (pc *PickupConfig) Validate(_ string) ([]string, []string, error) {
+	deps := []string{}
 	if pc.Arm == "" {
 		return nil, nil, fmt.Errorf("need an arm")
 	}
+	deps = append(deps, pc.Arm)
 
 	if pc.Gripper == "" {
 		return nil, nil, fmt.Errorf("need a gripper")
 	}
+	deps = append(deps, pc.Gripper)
 
 	if pc.Finder == "" {
 		return nil, nil, fmt.Errorf("need a finder (vision service)")
 	}
+	deps = append(deps, pc.Finder)
 
 	if pc.WatchPose == "" {
 		return nil, nil, fmt.Errorf("need a watch_pose (arm saver)")
 	}
+	deps = append(deps, pc.WatchPose)
 
 	if pc.Motion == "" {
 		return nil, nil, fmt.Errorf("need a motion")
 	}
+	deps = append(deps, motion.Named(pc.Motion).String())
 
-	return []string{pc.Arm, pc.Gripper, pc.Finder, motion.Named(pc.Motion).String()}, nil, nil
+	return deps, nil, nil
 }
 
 func NewPickup(ctx context.Context, name resource.Name, deps resource.Dependencies, conf *PickupConfig, logger logging.Logger) (*Pickup, error) {

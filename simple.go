@@ -170,18 +170,18 @@ func (sdc *streamdeckComponent) updateKeys(keys []KeyConfig) error {
 	return nil
 }
 
-func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck.State, e streamdeck.Event, which int) error {
+func (sdc *streamdeckComponent) getResourceAndCommandForKey(which int, e streamdeck.Event) (resource.Resource, map[string]interface{}, error) {
 	sdc.configLock.Lock()
 	defer sdc.configLock.Unlock()
 
 	k, ok := sdc.keys[which]
 	if !ok {
-		return fmt.Errorf("no key for %v", e)
+		return nil, nil, fmt.Errorf("no key for %v", e)
 	}
 
 	r, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok {
-		return fmt.Errorf("no resource %s for %s", k.Component, e)
+		return nil, nil, fmt.Errorf("no resource %s for %s", k.Component, e)
 	}
 
 	cmd := map[string]interface{}{}
@@ -189,8 +189,17 @@ func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck
 	if len(k.Args) > 0 {
 		cmd, ok = k.Args[0].(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("args wrong for %v %v %T", e, k.Args[0], k.Args[0])
+			return nil, nil, fmt.Errorf("args wrong for %v %v %T", e, k.Args[0], k.Args[0])
 		}
+	}
+
+	return r, cmd, nil
+}
+
+func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck.State, e streamdeck.Event, which int) error {
+	r, cmd, err := sdc.getResourceAndCommandForKey(which, e)
+	if err != nil {
+		return err
 	}
 
 	res, err := r.DoCommand(ctx, cmd)

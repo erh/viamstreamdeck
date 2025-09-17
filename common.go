@@ -82,7 +82,6 @@ func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64) []st
 			FontSize:  fontSize,
 			FontColor: getColor(clr, "white"),
 		}
-		fmt.Printf("hi %v\n", tl)
 		tls = append(tls, tl)
 	}
 

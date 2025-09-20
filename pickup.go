@@ -130,7 +130,7 @@ func NewPickup(ctx context.Context, name resource.Name, deps resource.Dependenci
 	}
 
 	// keep this last so we don't have to close it
-	p.sd, err = streamdeck.NewStreamDeck(ms.Conf)
+	p.sd, err = streamdeck.NewStreamDeckWithConfig(&ms.Conf, "")
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (p *Pickup) imageAndChangeButtonsInLock(ctx context.Context) error {
 }
 
 func (p *Pickup) HandleEvent(ctx context.Context, s streamdeck.State, e streamdeck.Event) error {
-	if e.Kind != streamdeck.EventKeyUnpush {
+	if e.Kind != streamdeck.EventKeyReleased {
 		p.logger.Debugf("ignoring %v %v", s, e)
 		return nil
 	}

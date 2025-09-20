@@ -44,12 +44,12 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		keys:   map[int]KeyConfig{},
 	}
 
-	sdc.sd, err = streamdeck.NewStreamDeck(ms.Conf)
+	sdc.sd, err = streamdeck.NewStreamDeckWithConfig(&ms.Conf, "")
 	if err != nil && ms == ModelOriginal {
 		// original vs original2 is confusing, try it
 		ms = ModelOriginal2
 		sdc.ms = ModelOriginal2
-		sdc.sd, err = streamdeck.NewStreamDeck(ms.Conf)
+		sdc.sd, err = streamdeck.NewStreamDeckWithConfig(&ms.Conf, "")
 	}
 
 	if err != nil {
@@ -214,9 +214,9 @@ func (sdc *streamdeckComponent) HandleEvent(ctx context.Context, s streamdeck.St
 	sdc.logger.Infof("got event %v", e)
 
 	switch e.Kind {
-	case streamdeck.EventKeyPush:
+	case streamdeck.EventKeyPressed:
 		return nil
-	case streamdeck.EventKeyUnpush:
+	case streamdeck.EventKeyReleased:
 		return sdc.handleKeyPress(ctx, s, e, e.Which)
 	}
 

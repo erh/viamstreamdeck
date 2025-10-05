@@ -14,12 +14,11 @@ Integration with Elgato StreamDeck
                  "color" : "purple",
                  "component": "foo",
                  "method": "do_command",
-                 "args": {
+                 "args": [ {
                      "x ": 1
-                 }
-             },
-             ...
+                 } ]
              }
+  ]
 }
 ```
 

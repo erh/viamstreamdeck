@@ -29,6 +29,10 @@ func (kc *KeyConfig) Validate() error {
 	return nil
 }
 
+func (kc *KeyConfig) snakeMethod() string {
+	return snakeToCamel(kc.Method)
+}
+
 type Config struct {
 	Brightness int
 	Keys       []KeyConfig

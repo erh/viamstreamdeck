@@ -15,6 +15,7 @@ import (
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/referenceframe"
 	"go.viam.com/rdk/resource"
+	"go.viam.com/rdk/robot/framesystem"
 	"go.viam.com/rdk/services/generic"
 	"go.viam.com/rdk/services/motion"
 	"go.viam.com/rdk/services/vision"
@@ -112,6 +113,11 @@ func NewPickup(ctx context.Context, name resource.Name, deps resource.Dependenci
 		return nil, err
 	}
 
+	p.rfs, err = framesystem.FromDependencies(deps)
+	if err != nil {
+		return nil, err
+	}
+
 	p.watchPose, err = toggleswitch.FromDependencies(deps, conf.WatchPose)
 	if err != nil {
 		return nil, err
@@ -165,6 +171,7 @@ type Pickup struct {
 	arm       arm.Arm
 	gripper   gripper.Gripper
 	motion    motion.Service
+	rfs       framesystem.Service
 	watchPose toggleswitch.Switch
 	finder    vision.Service
 
@@ -288,7 +295,7 @@ func (p *Pickup) pickupInLock(ctx context.Context, which int) error {
 
 	theSpot = touch.GetApproachPoint(theSpot, 0, &spatialmath.OrientationVectorDegrees{OZ: -1})
 
-	current, err := p.motion.GetPose(ctx, p.gripper.Name(), "world", nil, nil)
+	current, err := p.rfs.GetPose(ctx, p.conf.Gripper, "world", nil, nil)
 	if err != nil {
 		return err
 	}
@@ -310,7 +317,7 @@ func (p *Pickup) pickupInLock(ctx context.Context, which int) error {
 	_, err = p.motion.Move(
 		ctx,
 		motion.MoveReq{
-			ComponentName: p.gripper.Name(),
+			ComponentName: p.conf.Gripper,
 			Destination:   goalPose,
 		},
 	)

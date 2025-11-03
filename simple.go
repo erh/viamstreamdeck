@@ -7,6 +7,7 @@ import (
 
 	"go.uber.org/multierr"
 
+	"go.viam.com/rdk/components/switch"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 
@@ -36,6 +37,13 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		return nil, err
 	}
 
+	if ms == nil {
+		ms = FindAttachedStreamDeck()
+		if ms == nil {
+			return nil, fmt.Errorf("no streamdeck found")
+		}
+	}
+
 	sdc := &streamdeckComponent{
 		name:   name,
 		logger: logger,
@@ -61,7 +69,7 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		return nil, err
 	}
 
-	err = sdc.updateKeys(conf.Keys)
+	err = sdc.updateKeys(ctx, conf.Keys)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +101,7 @@ func (sdc *streamdeckComponent) Reconfigure(ctx context.Context, deps resource.D
 		return err
 	}
 
-	return sdc.updateKeys(newConf.Keys)
+	return sdc.updateKeys(ctx, newConf.Keys)
 }
 
 type streamdeckComponent struct {
@@ -118,7 +126,7 @@ func (sdc *streamdeckComponent) updateBrightness(level int) error {
 	return sdc.sd.SetBrightness(uint16(level))
 }
 
-func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
+func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
 	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok {
 		img, ok := assetImages["x.jpg"]
@@ -133,8 +141,8 @@ func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
 		)
 	}
 
-	if snakeToCamel(k.Method) != "DoCommand" {
-		return fmt.Errorf("only support DoCommand now, not %s", k.Method)
+	if snakeToCamel(k.Method) != "DoCommand" && snakeToCamel(k.Method) != "SetPosition" {
+		return fmt.Errorf("only support DoCommand and SetPosition now, not %s", k.Method)
 	}
 
 	if k.Image != "" {
@@ -152,6 +160,28 @@ func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
 		return fmt.Errorf("unknown image [%s]", k.Image)
 	}
 
+	if k.Text == "" && snakeToCamel(k.Method) == "SetPosition" {
+		s, err := sdc.findSwitch(ctx, k.Component)
+		if err != nil {
+			return err
+		}
+		_, names, err := s.GetNumberOfPositions(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		n, err := sdc.findSwitchArg(k)
+		if err != nil {
+			return err
+		}
+
+		if n < 0 || int(n) >= len(names) {
+			return fmt.Errorf("invalid position %d", n)
+		}
+
+		k.Text = names[n]
+	}
+
 	if k.Text != "" {
 		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor))
 	}
@@ -159,15 +189,55 @@ func (sdc *streamdeckComponent) updateKey(k KeyConfig) error {
 	return fmt.Errorf("nothing to display for key %v", k)
 }
 
-func (sdc *streamdeckComponent) updateKeys(keys []KeyConfig) error {
+func (sdc *streamdeckComponent) updateKeys(ctx context.Context, keys []KeyConfig) error {
 	for _, k := range keys {
-		err := sdc.updateKey(k)
+		err := sdc.updateKey(ctx, k)
 		if err != nil {
 			return err
 		}
 		sdc.keys[k.Key] = k
 	}
 	return nil
+}
+
+func (sdc *streamdeckComponent) findSwitchArg(k KeyConfig) (uint32, error) {
+	if len(k.Args) == 1 {
+		switch v := k.Args[0].(type) {
+		case int:
+			return uint32(v), nil
+		case float64:
+			return uint32(v), nil
+		case int32:
+			return uint32(v), nil
+		}
+	}
+	return 0, fmt.Errorf("need 1 number arg, got: %v", k.Args)
+}
+
+func (sdc *streamdeckComponent) findSwitch(ctx context.Context, name string) (toggleswitch.Switch, error) {
+	r, ok := vmodutils.FindDep(sdc.deps, name)
+	if !ok {
+		return nil, fmt.Errorf("no resource %s", name)
+	}
+
+	s, ok := r.(toggleswitch.Switch)
+	if !ok {
+		return nil, fmt.Errorf("%s is a %T not switch", name, r)
+	}
+
+	return s, nil
+
+}
+
+func (sdc *streamdeckComponent) getKeyConfig(which int) (*KeyConfig, error) {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	k, ok := sdc.keys[which]
+	if !ok {
+		return nil, fmt.Errorf("no key for %v", which)
+	}
+	return &k, nil
 }
 
 func (sdc *streamdeckComponent) getResourceAndCommandForKey(which int, e streamdeck.Event) (resource.Resource, map[string]interface{}, error) {
@@ -197,17 +267,39 @@ func (sdc *streamdeckComponent) getResourceAndCommandForKey(which int, e streamd
 }
 
 func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck.State, e streamdeck.Event, which int) error {
-	r, cmd, err := sdc.getResourceAndCommandForKey(which, e)
+	k, err := sdc.getKeyConfig(which)
 	if err != nil {
 		return err
 	}
 
-	res, err := r.DoCommand(ctx, cmd)
-	if err != nil {
-		return err
+	if k.snakeMethod() == "DoCommand" {
+		r, cmd, err := sdc.getResourceAndCommandForKey(which, e)
+		if err != nil {
+			return err
+		}
+
+		res, err := r.DoCommand(ctx, cmd)
+		if err != nil {
+			return err
+		}
+		sdc.logger.Infof("event %v got result %v", e, res)
+		return nil
+	} else if k.snakeMethod() == "SetPosition" {
+		s, err := sdc.findSwitch(ctx, k.Component)
+		if err != nil {
+			return err
+		}
+
+		n, err := sdc.findSwitchArg(*k)
+		if err != nil {
+			return err
+		}
+
+		return s.SetPosition(ctx, n, nil)
+
+	} else {
+		return fmt.Errorf("can't handle command %v", k.snakeMethod())
 	}
-	sdc.logger.Infof("event %v got result %v", e, res)
-	return nil
 }
 
 func (sdc *streamdeckComponent) HandleEvent(ctx context.Context, s streamdeck.State, e streamdeck.Event) error {

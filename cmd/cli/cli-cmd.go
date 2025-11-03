@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.viam.com/rdk/cli"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 	"go.viam.com/rdk/services/generic"
@@ -24,6 +25,8 @@ func main() {
 func realMain() error {
 
 	configFile := flag.String("config", "config file", "")
+	host := flag.String("host", "", "")
+	sleep := flag.Int("sleep", 10, "")
 
 	flag.Parse()
 
@@ -35,42 +38,49 @@ func realMain() error {
 	}
 
 	conf := &viamstreamdeck.Config{}
-	deps := resource.Dependencies{}
-
 	err := vmodutils.ReadJSONFromFile(*configFile, conf)
 	if err != nil {
 		return err
 	}
 
-	_, things, err := conf.Validate("")
-	if err != nil {
-		return err
-	}
+	deps := resource.Dependencies{}
 
-	for _, t := range things {
-		if t == "NO" {
-			continue
+	if *host == "" {
+		_, things, err := conf.Validate("")
+		if err != nil {
+			return err
 		}
-		n := generic.Named(t)
-		deps[n] = &TestThing{
-			name:   n,
-			logger: logger.Sublogger(t),
+
+		for _, t := range things {
+			if t == "NO" {
+				continue
+			}
+			n := generic.Named(t)
+			deps[n] = &TestThing{
+				name:   n,
+				logger: logger.Sublogger(t),
+			}
+		}
+	} else {
+		client, err := cli.ConnectToMachine(ctx, *host, logger)
+		if err != nil {
+			return err
+		}
+		defer client.Close(ctx)
+
+		deps, err = vmodutils.MachineToDependencies(client)
+		if err != nil {
+			return err
 		}
 	}
 
-	ms := viamstreamdeck.FindAttachedStreamDeck()
-	if ms == nil {
-		return fmt.Errorf("no streamdecks found")
-	}
-	logger.Infof("found streamdeck: %v", ms)
-
-	sd, err := viamstreamdeck.NewStreamDeck(ctx, generic.Named("foo"), deps, ms.Conf, conf, logger)
+	sd, err := viamstreamdeck.NewStreamDeck(ctx, generic.Named("foo"), deps, nil, conf, logger)
 	if err != nil {
 		return err
 	}
 	defer sd.Close(ctx)
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * time.Duration(*sleep))
 	return nil
 }
 

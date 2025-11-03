@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"go.uber.org/multierr"
 
@@ -48,6 +50,7 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		name:   name,
 		logger: logger,
 		ms:     ms,
+		conf:   conf,
 		deps:   deps,
 		keys:   map[int]KeyConfig{},
 	}
@@ -82,6 +85,8 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		}
 	})
 
+	go sdc.stateChecker()
+
 	return sdc, nil
 }
 
@@ -91,12 +96,16 @@ func (sdc *streamdeckComponent) Reconfigure(ctx context.Context, deps resource.D
 		return err
 	}
 
+	return sdc.reconfigure(ctx, deps, newConf)
+}
+
+func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.Dependencies, newConf *Config) error {
 	sdc.configLock.Lock()
 	defer sdc.configLock.Unlock()
 
 	sdc.deps = deps
 
-	err = sdc.updateBrightness(newConf.Brightness)
+	err := sdc.updateBrightness(newConf.Brightness)
 	if err != nil {
 		return err
 	}
@@ -113,7 +122,10 @@ type streamdeckComponent struct {
 
 	configLock sync.Mutex
 	deps       resource.Dependencies
+	conf       *Config
 	keys       map[int]KeyConfig
+
+	closed atomic.Int32
 }
 
 func (sdc *streamdeckComponent) updateBrightness(level int) error {
@@ -177,6 +189,21 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 
 		if n < 0 || int(n) >= len(names) {
 			return fmt.Errorf("invalid position %d", n)
+		}
+
+		if k.Color == "" && k.TextColor == "" {
+			pos, err := s.GetPosition(ctx, nil)
+			if err != nil {
+				return err
+			}
+
+			if pos == n {
+				k.TextColor = "black"
+				k.Color = "white"
+			} else {
+				k.TextColor = "white"
+				k.Color = "black"
+			}
 		}
 
 		k.Text = names[n]
@@ -319,7 +346,20 @@ func (sdc *streamdeckComponent) Name() resource.Name {
 	return sdc.name
 }
 
+func (sdc *streamdeckComponent) stateChecker() {
+	for sdc.closed.Load() == 0 {
+
+		err := sdc.reconfigure(context.Background(), sdc.deps, sdc.conf)
+		if err != nil {
+			sdc.logger.Errorf("can't reconfigure: %v", err)
+		}
+
+		time.Sleep(time.Second)
+	}
+}
+
 func (sdc *streamdeckComponent) Close(ctx context.Context) error {
+	sdc.closed.Store(1)
 	return multierr.Combine(sdc.sd.ClearAllBtns(), sdc.sd.Close())
 }
 

@@ -104,6 +104,7 @@ func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.D
 	defer sdc.configLock.Unlock()
 
 	sdc.deps = deps
+	sdc.conf = newConf
 
 	err := sdc.updateBrightness(newConf.Brightness)
 	if err != nil {

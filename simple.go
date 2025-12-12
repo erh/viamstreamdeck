@@ -294,6 +294,26 @@ func (sdc *streamdeckComponent) getResourceAndCommandForKey(which int, e streamd
 	return r, cmd, nil
 }
 
+func (sdc *streamdeckComponent) getResourceAndCommandForDial(which int) (resource.Resource, string, error) {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	for _, dc := range sdc.conf.Dials {
+		if which != dc.Dial {
+			continue
+		}
+
+		r, ok := vmodutils.FindDep(sdc.deps, dc.Component)
+		if !ok {
+			return nil, "", fmt.Errorf("no resource %s for %s", dc.Component)
+		}
+
+		return r, dc.Command, nil
+	}
+
+	return nil, "", fmt.Errorf("no config for dial %d", which)
+}
+
 func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck.State, e streamdeck.Event, which int) error {
 	k, err := sdc.getKeyConfig(which)
 	if err != nil {
@@ -330,6 +350,20 @@ func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck
 	}
 }
 
+func (sdc *streamdeckComponent) handleDialTurn(ctx context.Context, s streamdeck.State, which int) error {
+	sdc.logger.Infof("handleDialTurn called which: %v state: %v", which, s.DialPos[which])
+	r, c, err := sdc.getResourceAndCommandForDial(which)
+	if err != nil {
+		return err
+	}
+	res, err := r.DoCommand(ctx, map[string]interface{}{c: float64(s.DialPos[which])})
+	if err != nil {
+		return err
+	}
+	sdc.logger.Infof("res: %v", res)
+	return nil
+}
+
 func (sdc *streamdeckComponent) HandleEvent(ctx context.Context, s streamdeck.State, e streamdeck.Event) error {
 	sdc.logger.Infof("got event %v", e)
 
@@ -338,6 +372,8 @@ func (sdc *streamdeckComponent) HandleEvent(ctx context.Context, s streamdeck.St
 		return nil
 	case streamdeck.EventKeyReleased:
 		return sdc.handleKeyPress(ctx, s, e, e.Which)
+	case streamdeck.EventDialTurn:
+		return sdc.handleDialTurn(ctx, s, e.Which)
 	}
 
 	return fmt.Errorf("HandleEvent for %v not done", e)

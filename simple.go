@@ -142,7 +142,7 @@ func (sdc *streamdeckComponent) updateBrightness(level int) error {
 func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
 	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok {
-		sdc.logger.Warnf("missing component %v", k.Component)
+		sdc.logger.Warnf("missing component %v deps: %v", k.Component, sdc.deps)
 
 		img, ok := assetImages["x.jpg"]
 		if !ok {

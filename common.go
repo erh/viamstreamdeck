@@ -35,11 +35,11 @@ func getColor(want, def string) color.Color {
 	panic(fmt.Errorf("default color didn't work [%s]", def))
 }
 
-func (ms *ModelSetup) SimpleText(text string, clr string) []streamdeck.TextLine {
-	return ms.simpleText(text, clr, 20)
+func (ms *ModelSetup) SimpleText(text string, clr string, textFont *string) []streamdeck.TextLine {
+	return ms.simpleText(text, clr, 20, textFont)
 }
 
-func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64) []streamdeck.TextLine {
+func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64, textFont *string) []streamdeck.TextLine {
 	if fontSize <= 0 {
 		panic(fontSize)
 	}
@@ -51,7 +51,7 @@ func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64) []st
 	for _, s := range strings.Split(text, " ") {
 
 		if len(s) >= maxLine && fontSize > 4 {
-			return ms.simpleText(text, clr, fontSize-2)
+			return ms.simpleText(text, clr, fontSize-2, textFont)
 		}
 
 		last := lines[len(lines)-1]
@@ -69,7 +69,7 @@ func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64) []st
 	}
 
 	if fontSize > 4 && len(lines) >= ms.Conf.ButtonSize/int(fontSize) {
-		return ms.simpleText(text, clr, fontSize-2)
+		return ms.simpleText(text, clr, fontSize-2, textFont)
 	}
 
 	tls := []streamdeck.TextLine{}
@@ -82,15 +82,18 @@ func (ms *ModelSetup) simpleText(text string, clr string, fontSize float64) []st
 			FontSize:  fontSize,
 			FontColor: getColor(clr, "white"),
 		}
+		if textFont != nil {
+			tl.Font = GetFont(*textFont)
+		}
 		tls = append(tls, tl)
 	}
 
 	return tls
 }
 
-func (ms *ModelSetup) SimpleTextButton(text string, bgColor, textClr string) streamdeck.TextButton {
+func (ms *ModelSetup) SimpleTextButton(text string, bgColor, textClr string, textFont *string) streamdeck.TextButton {
 	return streamdeck.TextButton{
-		Lines:   ms.SimpleText(text, textClr),
+		Lines:   ms.SimpleText(text, textClr, textFont),
 		BgColor: getColor(bgColor, "black"),
 	}
 }

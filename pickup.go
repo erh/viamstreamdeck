@@ -211,8 +211,8 @@ func (p *Pickup) Prep(ctx context.Context) error {
 	}
 
 	return multierr.Combine(
-		p.sd.WriteText(0, p.ms.SimpleTextButton("move to watch", "", "")),
-		p.sd.WriteText(1, p.ms.SimpleTextButton("move and image", "", "")),
+		p.sd.WriteText(0, p.ms.SimpleTextButton("move to watch", "", "", nil)),
+		p.sd.WriteText(1, p.ms.SimpleTextButton("move and image", "", "", nil)),
 	)
 }
 
@@ -249,7 +249,7 @@ func (p *Pickup) imageAndChangeButtonsInLock(ctx context.Context) error {
 	p.currentState = STATE_WAITING_FOR_CHOICE
 	p.lastObjects = objs
 
-	return p.sd.WriteText(p.ms.Conf.NumButtons()-1, p.ms.SimpleTextButton("image again", "", ""))
+	return p.sd.WriteText(p.ms.Conf.NumButtons()-1, p.ms.SimpleTextButton("image again", "", "", nil))
 }
 
 func (p *Pickup) HandleEvent(ctx context.Context, s streamdeck.State, e streamdeck.Event) error {

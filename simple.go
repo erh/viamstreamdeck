@@ -9,7 +9,6 @@ import (
 
 	"go.uber.org/multierr"
 
-	"go.viam.com/rdk/components/switch"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 
@@ -27,6 +26,7 @@ import (
 	_ "go.viam.com/rdk/components/motor"
 	_ "go.viam.com/rdk/components/movementsensor"
 	_ "go.viam.com/rdk/components/sensor"
+	_ "go.viam.com/rdk/components/switch"
 	_ "go.viam.com/rdk/services/generic"
 	_ "go.viam.com/rdk/services/motion"
 	_ "go.viam.com/rdk/services/vision"
@@ -167,7 +167,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 				return sdc.sd.WriteTextOnImage(
 					k.Key,
 					img,
-					sdc.ms.SimpleText(k.Text, k.TextColor),
+					sdc.ms.SimpleText(k.Text, k.TextColor, k.TextFont),
 				)
 			}
 			return sdc.sd.FillImage(k.Key, img)
@@ -213,7 +213,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	}
 
 	if k.Text != "" {
-		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor))
+		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor, k.TextFont))
 	}
 
 	return fmt.Errorf("nothing to display for key %v", k)

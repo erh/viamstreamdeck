@@ -7,27 +7,27 @@
     "models": [
         {
             "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-any",
+            "model": "erh:viam-streamdeck:streamdeck-any",
             "markdown_link": "README.md#attributes"
         },
         {
             "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-plus",
+            "model": "erh:viam-streamdeck:streamdeck-plus",
             "markdown_link": "README.md#attributes"
         },
         {
             "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-original",
+            "model": "erh:viam-streamdeck:streamdeck-original",
             "markdown_link": "README.md#attributes"
         },
         {
             "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-original2",
+            "model": "erh:viam-streamdeck:streamdeck-original2",
             "markdown_link": "README.md#attributes"
         },
         {
             "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:pickup",
+            "model": "erh:viam-streamdeck:pickup",
             "short_description" : "streamdeck app for picking things up",
             "markdown_link": "README.md#attributes"
         }

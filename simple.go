@@ -103,16 +103,10 @@ func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.D
 	sdc.configLock.Lock()
 	defer sdc.configLock.Unlock()
 
-	// Validate and load external assets
-	_, _, err := newConf.Validate("")
-	if err != nil {
-		return err
-	}
-
 	sdc.deps = deps
 	sdc.conf = newConf
 
-	err = sdc.updateBrightness(newConf.Brightness)
+	err := sdc.updateBrightness(newConf.Brightness)
 	if err != nil {
 		return err
 	}

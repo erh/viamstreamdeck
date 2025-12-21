@@ -1,6 +1,6 @@
 {
     "$schema": "https://dl.viam.dev/module.schema.json",
-    "module_id": "michaellee1019:viam-streamdeck",
+    "module_id": "erh:viam-streamdeck",
     "visibility": "public",
     "url": "https://github.com/erh/viam-streamdeck/",
     "description": "for integrating viam with elgato streamdeck",

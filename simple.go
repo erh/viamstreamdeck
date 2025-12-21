@@ -26,7 +26,7 @@ import (
 	_ "go.viam.com/rdk/components/motor"
 	_ "go.viam.com/rdk/components/movementsensor"
 	_ "go.viam.com/rdk/components/sensor"
-	toggleswitch "go.viam.com/rdk/components/switch"
+	_ "go.viam.com/rdk/components/switch"
 	_ "go.viam.com/rdk/services/generic"
 	_ "go.viam.com/rdk/services/motion"
 	_ "go.viam.com/rdk/services/vision"

@@ -403,5 +403,199 @@ func (sdc *streamdeckComponent) Close(ctx context.Context) error {
 }
 
 func (sdc *streamdeckComponent) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return nil, nil
+	// Route to appropriate handler based on command structure
+	if updateBtn, ok := cmd["update_button"]; ok {
+		return sdc.handleUpdateButton(ctx, updateBtn)
+	}
+
+	if updateBtns, ok := cmd["update_buttons"]; ok {
+		return sdc.handleUpdateButtons(ctx, updateBtns)
+	}
+
+	return nil, fmt.Errorf("unknown command: supported commands are 'update_button' and 'update_buttons'")
+}
+
+// extractKeyNumber safely extracts and validates the key number from an update map.
+// It handles multiple numeric types that JSON unmarshaling might produce.
+func extractKeyNumber(updateMap map[string]interface{}) (int, error) {
+	keyVal, ok := updateMap["key"]
+	if !ok {
+		return 0, fmt.Errorf("missing required field 'key'")
+	}
+
+	// Handle multiple numeric types from JSON
+	switch v := keyVal.(type) {
+	case int:
+		return v, nil
+	case float64:
+		return int(v), nil
+	case int32:
+		return int(v), nil
+	case int64:
+		return int(v), nil
+	default:
+		return 0, fmt.Errorf("'key' must be a number, got %T", keyVal)
+	}
+}
+
+// applyPartialUpdate applies a partial button configuration update.
+// It merges the provided fields with the existing configuration, updates the display immediately,
+// and persists changes to both the keys map and config array.
+func (sdc *streamdeckComponent) applyPartialUpdate(ctx context.Context, keyNum int, updateMap map[string]interface{}) (*KeyConfig, error) {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	// Find existing config in the keys map
+	existingConfig, exists := sdc.keys[keyNum]
+	if !exists {
+		return nil, fmt.Errorf("button %d is not configured", keyNum)
+	}
+
+	// Create a copy to merge updates into
+	newConfig := existingConfig
+	newConfig.Key = keyNum // Ensure key number is set
+
+	// Apply partial updates - only update fields that are present
+	if text, ok := updateMap["text"]; ok {
+		if textStr, ok := text.(string); ok {
+			newConfig.Text = textStr
+		} else {
+			return nil, fmt.Errorf("'text' must be a string, got %T", text)
+		}
+	}
+
+	if textColor, ok := updateMap["text_color"]; ok {
+		if colorStr, ok := textColor.(string); ok {
+			newConfig.TextColor = colorStr
+		} else {
+			return nil, fmt.Errorf("'text_color' must be a string, got %T", textColor)
+		}
+	}
+
+	if color, ok := updateMap["color"]; ok {
+		if colorStr, ok := color.(string); ok {
+			newConfig.Color = colorStr
+		} else {
+			return nil, fmt.Errorf("'color' must be a string, got %T", color)
+		}
+	}
+
+	if image, ok := updateMap["image"]; ok {
+		if imageStr, ok := image.(string); ok {
+			newConfig.Image = imageStr
+		} else {
+			return nil, fmt.Errorf("'image' must be a string, got %T", image)
+		}
+	}
+
+	// Component, Method, and Args are intentionally NOT updatable
+	// They define the button's behavior, not its appearance
+
+	// Update the hardware immediately for instant visual feedback
+	err := sdc.updateKey(ctx, newConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update display: %w", err)
+	}
+
+	// Update in-memory map
+	sdc.keys[keyNum] = newConfig
+
+	// Update the config array for persistence across stateChecker cycles
+	updated := false
+	for i := range sdc.conf.Keys {
+		if sdc.conf.Keys[i].Key == keyNum {
+			sdc.conf.Keys[i] = newConfig
+			updated = true
+			break
+		}
+	}
+
+	if !updated {
+		// This shouldn't happen if keys map and conf.Keys are in sync
+		// But handle it defensively
+		sdc.conf.Keys = append(sdc.conf.Keys, newConfig)
+	}
+
+	return &newConfig, nil
+}
+
+// handleUpdateButton handles a single button update request.
+func (sdc *streamdeckComponent) handleUpdateButton(ctx context.Context, data interface{}) (map[string]interface{}, error) {
+	// Parse the update data into a map
+	updateMap, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("update_button must be a map, got %T", data)
+	}
+
+	// Extract and validate key number
+	keyNum, err := extractKeyNumber(updateMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply the update
+	updatedConfig, err := sdc.applyPartialUpdate(ctx, keyNum, updateMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"success":        true,
+		"key":            keyNum,
+		"updated_config": updatedConfig,
+	}, nil
+}
+
+// handleUpdateButtons handles batch button update requests.
+func (sdc *streamdeckComponent) handleUpdateButtons(ctx context.Context, data interface{}) (map[string]interface{}, error) {
+	// Parse the array of updates
+	updateArray, ok := data.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("update_buttons must be an array, got %T", data)
+	}
+
+	if len(updateArray) == 0 {
+		return nil, fmt.Errorf("update_buttons array cannot be empty")
+	}
+
+	results := make([]map[string]interface{}, 0, len(updateArray))
+	var errors []string
+
+	// Process each update
+	for idx, item := range updateArray {
+		updateMap, ok := item.(map[string]interface{})
+		if !ok {
+			errors = append(errors, fmt.Sprintf("update[%d]: must be a map, got %T", idx, item))
+			continue
+		}
+
+		keyNum, err := extractKeyNumber(updateMap)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("update[%d]: %v", idx, err))
+			continue
+		}
+
+		updatedConfig, err := sdc.applyPartialUpdate(ctx, keyNum, updateMap)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("key %d: %v", keyNum, err))
+			continue
+		}
+
+		results = append(results, map[string]interface{}{
+			"key":            keyNum,
+			"updated_config": updatedConfig,
+		})
+	}
+
+	response := map[string]interface{}{
+		"success":       len(errors) == 0,
+		"updated_count": len(results),
+		"results":       results,
+	}
+
+	if len(errors) > 0 {
+		response["errors"] = errors
+	}
+
+	return response, nil
 }

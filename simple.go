@@ -9,7 +9,7 @@ import (
 
 	"go.uber.org/multierr"
 
-	"go.viam.com/rdk/components/switch"
+	toggleswitch "go.viam.com/rdk/components/switch"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 
@@ -139,9 +139,57 @@ func (sdc *streamdeckComponent) updateBrightness(level int) error {
 	return sdc.sd.SetBrightness(uint16(level))
 }
 
+// applyKeyUpdate merges updates into an existing key config and returns the result
+func (sdc *streamdeckComponent) applyKeyUpdate(existing KeyConfig, updates map[string]interface{}) (KeyConfig, error) {
+	result := existing
+
+	if text, ok := updates["text"].(string); ok {
+		result.Text = text
+	}
+	if textColor, ok := updates["text_color"].(string); ok {
+		result.TextColor = textColor
+	}
+	if color, ok := updates["color"].(string); ok {
+		result.Color = color
+	}
+	if image, ok := updates["image"].(string); ok {
+		result.Image = image
+	}
+	if component, ok := updates["component"].(string); ok {
+		result.Component = component
+	}
+	if method, ok := updates["method"].(string); ok {
+		result.Method = method
+	}
+	if args, ok := updates["args"].([]interface{}); ok {
+		result.Args = args
+	}
+
+	return result, nil
+}
+
+// applyDialUpdate merges updates into an existing dial config and returns the result
+func (sdc *streamdeckComponent) applyDialUpdate(existing DialConfig, updates map[string]interface{}) (DialConfig, error) {
+	result := existing
+
+	if component, ok := updates["component"].(string); ok {
+		result.Component = component
+	}
+	if command, ok := updates["command"].(string); ok {
+		result.Command = command
+	}
+
+	return result, nil
+}
+
+func (sdc *streamdeckComponent) isSelfReference(componentName string) bool {
+	return componentName == sdc.name.ShortName()
+}
+
 func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
+	// Check if component exists in deps or is a self-reference
 	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
-	if !ok {
+	if !ok && !sdc.isSelfReference(k.Component) {
 		sdc.logger.Warnf("missing component %v deps: %v", k.Component, sdc.deps)
 
 		img, ok := assetImages["x.jpg"]
@@ -279,9 +327,15 @@ func (sdc *streamdeckComponent) getResourceAndCommandForKey(which int, e streamd
 		return nil, nil, fmt.Errorf("no key for %v", e)
 	}
 
-	r, ok := vmodutils.FindDep(sdc.deps, k.Component)
-	if !ok {
-		return nil, nil, fmt.Errorf("no resource %s for %s", k.Component, e)
+	var r resource.Resource
+	// Check if this is a self-reference
+	if sdc.isSelfReference(k.Component) {
+		r = sdc
+	} else {
+		r, ok = vmodutils.FindDep(sdc.deps, k.Component)
+		if !ok {
+			return nil, nil, fmt.Errorf("no resource %s for %s", k.Component, e)
+		}
 	}
 
 	cmd := map[string]interface{}{}
@@ -305,9 +359,16 @@ func (sdc *streamdeckComponent) getResourceAndCommandForDial(which int) (resourc
 			continue
 		}
 
-		r, ok := vmodutils.FindDep(sdc.deps, dc.Component)
-		if !ok {
-			return nil, "", fmt.Errorf("no resource %s for %s", dc.Component)
+		var r resource.Resource
+		var ok bool
+		// Check if this is a self-reference
+		if sdc.isSelfReference(dc.Component) {
+			r = sdc
+		} else {
+			r, ok = vmodutils.FindDep(sdc.deps, dc.Component)
+			if !ok {
+				return nil, "", fmt.Errorf("no resource %s", dc.Component)
+			}
 		}
 
 		return r, dc.Command, nil
@@ -403,5 +464,174 @@ func (sdc *streamdeckComponent) Close(ctx context.Context) error {
 }
 
 func (sdc *streamdeckComponent) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return nil, nil
+	if updateData, ok := cmd["update_display"]; ok {
+		updateMap, ok := updateData.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("update_display must be an object/map")
+		}
+		return sdc.handleUpdateDisplay(ctx, updateMap)
+	}
+
+	return nil, fmt.Errorf("unknown command, supported commands: update_display")
+}
+
+func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	updated := map[string]interface{}{}
+
+	// Handle brightness update
+	if brightness, ok := cmd["brightness"]; ok {
+		brightnessInt, err := toInt(brightness)
+		if err != nil {
+			return nil, fmt.Errorf("brightness must be a number: %w", err)
+		}
+
+		err = sdc.updateBrightness(brightnessInt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update brightness: %w", err)
+		}
+		sdc.conf.Brightness = brightnessInt
+		updated["brightness"] = brightnessInt
+	}
+
+	// Handle key updates
+	if keysData, ok := cmd["keys"]; ok {
+		keysMap, ok := keysData.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("keys must be an object/map")
+		}
+
+		updatedKeys := []int{}
+		for keyNumStr, keyConfigData := range keysMap {
+			keyNum := 0
+			_, err := fmt.Sscanf(keyNumStr, "%d", &keyNum)
+			if err != nil {
+				return nil, fmt.Errorf("invalid key number: %s", keyNumStr)
+			}
+
+			keyConfigMap, ok := keyConfigData.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("key config for key %d must be an object/map", keyNum)
+			}
+
+			// Get existing key config or create new one
+			existingKey, hasExisting := sdc.keys[keyNum]
+			if !hasExisting {
+				existingKey = KeyConfig{Key: keyNum}
+			}
+
+			// Apply updates using shared helper
+			newKey, err := sdc.applyKeyUpdate(existingKey, keyConfigMap)
+			if err != nil {
+				return nil, fmt.Errorf("failed to apply updates to key %d: %w", keyNum, err)
+			}
+			newKey.Key = keyNum
+
+			// Update the key on the device
+			err = sdc.updateKey(ctx, newKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to update key %d: %w", keyNum, err)
+			}
+
+			// Update internal state
+			sdc.keys[keyNum] = newKey
+
+			// Also update the key in the config array if it exists
+			foundInConfig := false
+			for i := range sdc.conf.Keys {
+				if sdc.conf.Keys[i].Key == keyNum {
+					sdc.conf.Keys[i] = newKey
+					foundInConfig = true
+					break
+				}
+			}
+			if !foundInConfig {
+				sdc.conf.Keys = append(sdc.conf.Keys, newKey)
+			}
+
+			updatedKeys = append(updatedKeys, keyNum)
+		}
+
+		updated["keys"] = updatedKeys
+	}
+
+	// Handle dial updates
+	if dialsData, ok := cmd["dials"]; ok {
+		dialsMap, ok := dialsData.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("dials must be an object/map")
+		}
+
+		updatedDials := []int{}
+		for dialNumStr, dialConfigData := range dialsMap {
+			dialNum := 0
+			_, err := fmt.Sscanf(dialNumStr, "%d", &dialNum)
+			if err != nil {
+				return nil, fmt.Errorf("invalid dial number: %s", dialNumStr)
+			}
+
+			dialConfigMap, ok := dialConfigData.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("dial config for dial %d must be an object/map", dialNum)
+			}
+
+			// Find existing dial config or create new one
+			existingDial := DialConfig{Dial: dialNum}
+			foundDial := false
+			for _, dc := range sdc.conf.Dials {
+				if dc.Dial == dialNum {
+					existingDial = dc
+					foundDial = true
+					break
+				}
+			}
+
+			// Apply updates using shared helper
+			newDial, err := sdc.applyDialUpdate(existingDial, dialConfigMap)
+			if err != nil {
+				return nil, fmt.Errorf("failed to apply updates to dial %d: %w", dialNum, err)
+			}
+			newDial.Dial = dialNum
+
+			// Update dial in config
+			if foundDial {
+				for i := range sdc.conf.Dials {
+					if sdc.conf.Dials[i].Dial == dialNum {
+						sdc.conf.Dials[i] = newDial
+						break
+					}
+				}
+			} else {
+				sdc.conf.Dials = append(sdc.conf.Dials, newDial)
+			}
+
+			updatedDials = append(updatedDials, dialNum)
+		}
+
+		updated["dials"] = updatedDials
+	}
+
+	if len(updated) == 0 {
+		return nil, fmt.Errorf("no valid updates provided")
+	}
+
+	return updated, nil
+}
+
+// toInt converts various numeric types to int
+func toInt(v interface{}) (int, error) {
+	switch val := v.(type) {
+	case int:
+		return val, nil
+	case float64:
+		return int(val), nil
+	case int32:
+		return int(val), nil
+	case int64:
+		return int(val), nil
+	default:
+		return 0, fmt.Errorf("cannot convert %T to int", v)
+	}
 }

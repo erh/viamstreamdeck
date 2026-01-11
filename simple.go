@@ -9,7 +9,7 @@ import (
 
 	"go.uber.org/multierr"
 
-	"go.viam.com/rdk/components/switch"
+	toggleswitch "go.viam.com/rdk/components/switch"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
 
@@ -72,7 +72,13 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		return nil, err
 	}
 
-	err = sdc.updateKeys(ctx, conf.Keys)
+	// Initialize with appropriate keys
+	if len(conf.Pages) > 0 {
+		sdc.currentPage = conf.InitialPage
+		logger.Debugf("Initializing with page: %s", sdc.currentPage)
+	}
+
+	err = sdc.updateKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +117,7 @@ func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.D
 		return err
 	}
 
-	return sdc.updateKeys(ctx, newConf.Keys)
+	return sdc.updateKeys(ctx)
 }
 
 type streamdeckComponent struct {
@@ -121,10 +127,11 @@ type streamdeckComponent struct {
 
 	sd *streamdeck.StreamDeck
 
-	configLock sync.Mutex
-	deps       resource.Dependencies
-	conf       *Config
-	keys       map[int]KeyConfig
+	configLock  sync.Mutex
+	deps        resource.Dependencies
+	conf        *Config
+	keys        map[int]KeyConfig
+	currentPage string // Track the current page
 
 	closed atomic.Int32
 }
@@ -219,7 +226,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	return fmt.Errorf("nothing to display for key %v", k)
 }
 
-func (sdc *streamdeckComponent) updateKeys(ctx context.Context, keys []KeyConfig) error {
+func (sdc *streamdeckComponent) applyKeys(ctx context.Context, keys []KeyConfig) error {
 	for _, k := range keys {
 		err := sdc.updateKey(ctx, k)
 		if err != nil {
@@ -228,6 +235,33 @@ func (sdc *streamdeckComponent) updateKeys(ctx context.Context, keys []KeyConfig
 		sdc.keys[k.Key] = k
 	}
 	return nil
+}
+
+func (sdc *streamdeckComponent) updateKeys(ctx context.Context) error {
+	// Determine which keys to load
+	var keysToLoad []KeyConfig
+	if len(sdc.conf.Keys) > 0 {
+		// Old format - load keys directly
+		keysToLoad = sdc.conf.Keys
+		sdc.currentPage = ""
+	} else if len(sdc.conf.Pages) > 0 {
+		// New format - try to keep current page, or use initial_page
+		if sdc.currentPage != "" {
+			var err error
+			keysToLoad, err = sdc.conf.GetKeysForPage(sdc.currentPage)
+			if err != nil {
+				// Current page no longer exists, switch to initial_page
+				sdc.currentPage = sdc.conf.InitialPage
+				keysToLoad, _ = sdc.conf.GetKeysForPage(sdc.currentPage)
+			}
+		} else {
+			// No current page set, use initial_page
+			sdc.currentPage = sdc.conf.InitialPage
+			keysToLoad, _ = sdc.conf.GetKeysForPage(sdc.currentPage)
+		}
+	}
+
+	return sdc.applyKeys(ctx, keysToLoad)
 }
 
 func (sdc *streamdeckComponent) findSwitchArg(k KeyConfig) (uint32, error) {
@@ -403,5 +437,44 @@ func (sdc *streamdeckComponent) Close(ctx context.Context) error {
 }
 
 func (sdc *streamdeckComponent) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return nil, nil
+	// Check for set_page command
+	if pageName, ok := cmd["set_page"].(string); ok {
+		err := sdc.setPage(ctx, pageName)
+		if err != nil {
+			return nil, err
+		}
+
+		return map[string]interface{}{
+			"success": true,
+			"page":    pageName,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unknown command")
+}
+
+func (sdc *streamdeckComponent) setPage(ctx context.Context, pageName string) error {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	// Validate the page exists
+	keys, err := sdc.conf.GetKeysForPage(pageName)
+	if err != nil {
+		return err
+	}
+
+	// Clear all buttons
+	err = sdc.sd.ClearAllBtns()
+	if err != nil {
+		return fmt.Errorf("failed to clear buttons: %w", err)
+	}
+
+	// Clear the current keys map
+	sdc.keys = map[int]KeyConfig{}
+
+	// Update to the new page
+	sdc.currentPage = pageName
+
+	// Load the new keys
+	return sdc.applyKeys(ctx, keys)
 }

@@ -166,3 +166,4 @@ cython_debug/
 *~
 bin/
 module.tar.gz
+reload-dist/*

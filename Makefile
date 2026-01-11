@@ -1,7 +1,7 @@
 
 BINARY = bin/viamstreamdeck
 
-$(BINARY): bin *.go cmd/module/*.go *.mod assets/*.jpg
+$(BINARY): bin *.go cmd/module/*.go *.mod assets/*/*
 	go build -o $(BINARY) cmd/module/cmd.go
 
 test:

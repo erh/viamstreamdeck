@@ -215,7 +215,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 				return sdc.sd.WriteTextOnImage(
 					k.Key,
 					img,
-					sdc.ms.SimpleText(k.Text, k.TextColor),
+					sdc.ms.SimpleText(k.Text, k.TextColor, k.TextFont),
 				)
 			}
 			return sdc.sd.FillImage(k.Key, img)
@@ -261,7 +261,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	}
 
 	if k.Text != "" {
-		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor))
+		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor, k.TextFont))
 	}
 
 	return fmt.Errorf("nothing to display for key %v", k)

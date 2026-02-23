@@ -227,6 +227,26 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 }
 
 func (sdc *streamdeckComponent) applyKeys(ctx context.Context, keys []KeyConfig) error {
+	// Build a set of new key indices
+	newKeyIndices := make(map[int]bool)
+	for _, k := range keys {
+		newKeyIndices[k.Key] = true
+	}
+
+	// Clear any keys that are currently configured but not in the new set
+	for keyIdx := range sdc.keys {
+		if !newKeyIndices[keyIdx] {
+			// Clear this key from the display
+			err := sdc.sd.ClearBtn(keyIdx)
+			if err != nil {
+				sdc.logger.Errorf("failed to clear key %d: %v", keyIdx, err)
+			}
+			// Remove from internal cache
+			delete(sdc.keys, keyIdx)
+		}
+	}
+
+	// Apply all the new keys
 	for _, k := range keys {
 		err := sdc.updateKey(ctx, k)
 		if err != nil {

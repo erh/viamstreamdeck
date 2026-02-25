@@ -7,25 +7,6 @@
     "models": [
         {
             "api": "rdk:service:generic",
-<<<<<<< Updated upstream
-            "model": "michaellee1019:viam-streamdeck:streamdeck-any",
-            "markdown_link": "README.md#simple-config"
-        },
-        {
-            "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-plus",
-            "markdown_link": "README.md#simple-config"
-        },
-        {
-            "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-original",
-            "markdown_link": "README.md#simple-config"
-        },
-        {
-            "api": "rdk:service:generic",
-            "model": "michaellee1019:viam-streamdeck:streamdeck-original2",
-            "markdown_link": "README.md#simple-config"
-=======
             "model": "erh:viam-streamdeck:streamdeck-any",
             "markdown_link": "README.md#attributes"
         },
@@ -43,13 +24,12 @@
             "api": "rdk:service:generic",
             "model": "erh:viam-streamdeck:streamdeck-original2",
             "markdown_link": "README.md#attributes"
->>>>>>> Stashed changes
         },
         {
             "api": "rdk:service:generic",
             "model": "erh:viam-streamdeck:pickup",
             "short_description" : "streamdeck app for picking things up",
-            "markdown_link": "README.md#pickup"
+            "markdown_link": "README.md#attributes"
         }
 
     ],

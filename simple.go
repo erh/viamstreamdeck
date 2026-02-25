@@ -146,21 +146,27 @@ func (sdc *streamdeckComponent) updateBrightness(level int) error {
 	return sdc.sd.SetBrightness(uint16(level))
 }
 
+func (sdc *streamdeckComponent) isSelfReference(component string) bool {
+	return sdc.name.ShortName() == component
+}
+
 func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
-	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
-	if !ok {
-		sdc.logger.Warnf("missing component %v deps: %v", k.Component, sdc.deps)
-
-		img, ok := assetImages["x.jpg"]
+	if !sdc.isSelfReference(k.Component) {
+		_, ok := vmodutils.FindDep(sdc.deps, k.Component)
 		if !ok {
-			return fmt.Errorf("can't find dependency %s nore, the x image :(", k.Component)
-		}
+			sdc.logger.Warnf("missing component %v deps: %v", k.Component, sdc.deps)
 
-		return sdc.sd.WriteTextOnImage(
-			k.Key,
-			img,
-			[]streamdeck.TextLine{{Text: k.Component, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor("black", "black")}},
-		)
+			img, ok := assetImages["x.jpg"]
+			if !ok {
+				return fmt.Errorf("can't find dependency %s nore, the x image :(", k.Component)
+			}
+
+			return sdc.sd.WriteTextOnImage(
+				k.Key,
+				img,
+				[]streamdeck.TextLine{{Text: k.Component, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor("black", "black")}},
+			)
+		}
 	}
 
 	if snakeToCamel(k.Method) != "DoCommand" && snakeToCamel(k.Method) != "SetPosition" {
@@ -174,7 +180,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 				return sdc.sd.WriteTextOnImage(
 					k.Key,
 					img,
-					sdc.ms.SimpleText(k.Text, k.TextColor),
+					sdc.ms.SimpleText(k.Text, k.TextColor, k.TextFont),
 				)
 			}
 			return sdc.sd.FillImage(k.Key, img)
@@ -220,7 +226,7 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	}
 
 	if k.Text != "" {
-		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor))
+		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor, k.TextFont))
 	}
 
 	return fmt.Errorf("nothing to display for key %v", k)
@@ -377,6 +383,23 @@ func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck
 	}
 
 	if k.snakeMethod() == "DoCommand" {
+		if sdc.isSelfReference(k.Component) {
+			cmd := map[string]interface{}{}
+			if len(k.Args) > 0 {
+				if c, ok := k.Args[0].(map[string]interface{}); ok {
+					cmd = c
+				} else {
+					return fmt.Errorf("args wrong for %v %v %T", e, k.Args[0], k.Args[0])
+				}
+			}
+			res, err := sdc.DoCommand(ctx, cmd)
+			if err != nil {
+				return err
+			}
+			sdc.logger.Infof("event %v got result %v", e, res)
+			return nil
+		}
+
 		r, cmd, err := sdc.getResourceAndCommandForKey(which, e)
 		if err != nil {
 			return err

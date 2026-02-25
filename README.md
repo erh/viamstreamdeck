@@ -215,6 +215,55 @@ Keys can reference the Stream Deck component itself by using the component's own
 }
 ```
 
+### Pages
+
+Instead of a flat list of keys, you can organize keys into named pages and switch between them at runtime using `set_page`. Use `initial_page` to set which page is displayed on startup. Keys can navigate between pages by referencing the Stream Deck component itself and calling `set_page`.
+
+```json
+{
+  "brightness": 100,
+  "initial_page": "main",
+  "pages": {
+    "main": [
+      {
+        "key": 0,
+        "text": "Go to other",
+        "color": "blue",
+        "component": "my-streamdeck",
+        "method": "do_command",
+        "args": [{ "set_page": "other" }]
+      },
+      {
+        "key": 1,
+        "text": "Hello",
+        "component": "foo",
+        "method": "do_command",
+        "args": [{ "x": 1 }]
+      }
+    ],
+    "other": [
+      {
+        "key": 0,
+        "text": "Back",
+        "color": "red",
+        "component": "my-streamdeck",
+        "method": "do_command",
+        "args": [{ "set_page": "main" }]
+      },
+      {
+        "key": 1,
+        "text": "Do thing",
+        "component": "bar",
+        "method": "do_command",
+        "args": [{ "y": 2 }]
+      }
+    ]
+  }
+}
+```
+
+You cannot use `keys` and `pages` at the same time.
+
 ## pickup
 
 This is a simple streamdeck app for picking things up

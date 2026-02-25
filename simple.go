@@ -129,11 +129,12 @@ type streamdeckComponent struct {
 
 	sd *streamdeck.StreamDeck
 
-	configLock  sync.Mutex
-	deps        resource.Dependencies
-	conf        *Config
-	keys        map[int]KeyConfig
-	currentPage string // Track the current page
+	configLock sync.Mutex
+	deps       resource.Dependencies
+	conf       *Config
+	keys       map[int]KeyConfig
+
+	currentPage string
 
 	closed atomic.Int32
 }
@@ -310,11 +311,11 @@ func (sdc *streamdeckComponent) updateKeys(ctx context.Context) error {
 	// Determine which keys to load
 	var keysToLoad []KeyConfig
 	if len(sdc.conf.Keys) > 0 {
-		// Old format - load keys directly
+		// single page of keys
 		keysToLoad = sdc.conf.Keys
 		sdc.currentPage = ""
 	} else if len(sdc.conf.Pages) > 0 {
-		// New format - try to keep current page, or use initial_page
+		// try to keep current page, or use initial_page
 		if sdc.currentPage != "" {
 			var err error
 			keysToLoad, err = sdc.conf.GetKeysForPage(sdc.currentPage)
@@ -439,23 +440,6 @@ func (sdc *streamdeckComponent) handleKeyPress(ctx context.Context, s streamdeck
 	}
 
 	if k.snakeMethod() == "DoCommand" {
-		if sdc.isSelfReference(k.Component) {
-			cmd := map[string]interface{}{}
-			if len(k.Args) > 0 {
-				if c, ok := k.Args[0].(map[string]interface{}); ok {
-					cmd = c
-				} else {
-					return fmt.Errorf("args wrong for %v %v %T", e, k.Args[0], k.Args[0])
-				}
-			}
-			res, err := sdc.DoCommand(ctx, cmd)
-			if err != nil {
-				return err
-			}
-			sdc.logger.Infof("event %v got result %v", e, res)
-			return nil
-		}
-
 		r, cmd, err := sdc.getResourceAndCommandForKey(which, e)
 		if err != nil {
 			return err

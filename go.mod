@@ -6,6 +6,8 @@ require (
 	github.com/bearsh/hid v1.6.0
 	github.com/dh1tw/streamdeck v1.0.0
 	github.com/erh/vmodutils v0.3.2
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
+	github.com/mitchellh/mapstructure v1.5.0
 	go.uber.org/multierr v1.11.0
 	go.viam.com/rdk v0.99.0
 	go.viam.com/test v1.2.4
@@ -82,7 +84,6 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
-	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/geo v0.0.0-20230421003525-6adc56603217 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect

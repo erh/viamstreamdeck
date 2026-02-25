@@ -9,6 +9,8 @@ import (
 
 	"go.uber.org/multierr"
 
+	"github.com/mitchellh/mapstructure"
+
 	toggleswitch "go.viam.com/rdk/components/switch"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
@@ -479,41 +481,32 @@ func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map
 	sdc.configLock.Lock()
 	defer sdc.configLock.Unlock()
 
+	// Decode the command using mapstructure
+	var updateCmd UpdateDisplayCommand
+	if err := mapstructure.Decode(cmd, &updateCmd); err != nil {
+		return nil, fmt.Errorf("failed to decode update_display command: %w", err)
+	}
+
 	updated := map[string]interface{}{}
 
 	// Handle brightness update
-	if brightness, ok := cmd["brightness"]; ok {
-		brightnessInt, err := toInt(brightness)
-		if err != nil {
-			return nil, fmt.Errorf("brightness must be a number: %w", err)
-		}
-
-		err = sdc.updateBrightness(brightnessInt)
+	if updateCmd.Brightness != nil {
+		err := sdc.updateBrightness(*updateCmd.Brightness)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update brightness: %w", err)
 		}
-		sdc.conf.Brightness = brightnessInt
-		updated["brightness"] = brightnessInt
+		sdc.conf.Brightness = *updateCmd.Brightness
+		updated["brightness"] = *updateCmd.Brightness
 	}
 
 	// Handle key updates
-	if keysData, ok := cmd["keys"]; ok {
-		keysMap, ok := keysData.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("keys must be an object/map")
-		}
-
+	if updateCmd.Keys != nil {
 		updatedKeys := []int{}
-		for keyNumStr, keyConfigData := range keysMap {
+		for keyNumStr, keyConfigMap := range updateCmd.Keys {
 			keyNum := 0
 			_, err := fmt.Sscanf(keyNumStr, "%d", &keyNum)
 			if err != nil {
 				return nil, fmt.Errorf("invalid key number: %s", keyNumStr)
-			}
-
-			keyConfigMap, ok := keyConfigData.(map[string]interface{})
-			if !ok {
-				return nil, fmt.Errorf("key config for key %d must be an object/map", keyNum)
 			}
 
 			// Get existing key config or create new one
@@ -558,23 +551,13 @@ func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map
 	}
 
 	// Handle dial updates
-	if dialsData, ok := cmd["dials"]; ok {
-		dialsMap, ok := dialsData.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("dials must be an object/map")
-		}
-
+	if updateCmd.Dials != nil {
 		updatedDials := []int{}
-		for dialNumStr, dialConfigData := range dialsMap {
+		for dialNumStr, dialConfigMap := range updateCmd.Dials {
 			dialNum := 0
 			_, err := fmt.Sscanf(dialNumStr, "%d", &dialNum)
 			if err != nil {
 				return nil, fmt.Errorf("invalid dial number: %s", dialNumStr)
-			}
-
-			dialConfigMap, ok := dialConfigData.(map[string]interface{})
-			if !ok {
-				return nil, fmt.Errorf("dial config for dial %d must be an object/map", dialNum)
 			}
 
 			// Find existing dial config or create new one
@@ -618,20 +601,4 @@ func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map
 	}
 
 	return updated, nil
-}
-
-// toInt converts various numeric types to int
-func toInt(v interface{}) (int, error) {
-	switch val := v.(type) {
-	case int:
-		return val, nil
-	case float64:
-		return int(val), nil
-	case int32:
-		return int(val), nil
-	case int64:
-		return int(val), nil
-	default:
-		return 0, fmt.Errorf("cannot convert %T to int", v)
-	}
 }

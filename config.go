@@ -91,6 +91,12 @@ type Config struct {
 	Assets     *AssetsConfig `json:"assets,omitempty"`
 }
 
+type UpdateDisplayCommand struct {
+	Brightness *int                              `mapstructure:"brightness"`
+	Keys       map[string]map[string]interface{} `mapstructure:"keys"`
+	Dials      map[string]map[string]interface{} `mapstructure:"dials"`
+}
+
 func (c *Config) Validate(p string) ([]string, []string, error) {
 	// Create logger for validation
 	logger := logging.NewLogger("viamstreamdeck-config")

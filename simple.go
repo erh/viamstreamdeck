@@ -276,8 +276,9 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	return fmt.Errorf("nothing to display for key %v", k)
 }
 
+// applyKeys renders the given keys on the Stream Deck, clearing any
+// previously displayed keys that aren't in the new set.
 func (sdc *streamdeckComponent) applyKeys(ctx context.Context, keys []KeyConfig) error {
-	// Build a set of new key indices
 	newKeyIndices := make(map[int]bool)
 	for _, k := range keys {
 		newKeyIndices[k.Key] = true
@@ -307,8 +308,9 @@ func (sdc *streamdeckComponent) applyKeys(ctx context.Context, keys []KeyConfig)
 	return nil
 }
 
+// updateKeys resolves which keys should be displayed based on the current
+// config (keys vs pages) and applies them.
 func (sdc *streamdeckComponent) updateKeys(ctx context.Context) error {
-	// Determine which keys to load
 	var keysToLoad []KeyConfig
 	if len(sdc.conf.Keys) > 0 {
 		keysToLoad = sdc.conf.Keys

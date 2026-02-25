@@ -311,11 +311,9 @@ func (sdc *streamdeckComponent) updateKeys(ctx context.Context) error {
 	// Determine which keys to load
 	var keysToLoad []KeyConfig
 	if len(sdc.conf.Keys) > 0 {
-		// single page of keys
 		keysToLoad = sdc.conf.Keys
 		sdc.currentPage = ""
 	} else if len(sdc.conf.Pages) > 0 {
-		// try to keep current page, or use initial_page
 		if sdc.currentPage != "" {
 			var err error
 			keysToLoad, err = sdc.conf.GetKeysForPage(sdc.currentPage)

@@ -139,7 +139,6 @@ func (c *Config) Validate(p string) ([]string, []string, error) {
 		return nil, nil, fmt.Errorf("must specify either 'keys' or 'pages' in config")
 	}
 
-	// Validate keys (old format)
 	for _, k := range c.Keys {
 		err := k.Validate()
 		if err != nil {
@@ -151,7 +150,6 @@ func (c *Config) Validate(p string) ([]string, []string, error) {
 		}
 	}
 
-	// Validate pages (new format)
 	for pageName, keys := range c.Pages {
 		if pageName == "" {
 			return nil, nil, fmt.Errorf("page name cannot be empty")
@@ -203,9 +201,8 @@ func (c *Config) GetPageNames() []string {
 	return names
 }
 
-// GetKeysForPage returns the keys for the given page, or the default keys if using old format
+// GetKeysForPage returns the keys for the given page
 func (c *Config) GetKeysForPage(pageName string) ([]KeyConfig, error) {
-	// Old format - return the keys directly
 	if len(c.Keys) > 0 {
 		if pageName != "" {
 			return nil, fmt.Errorf("pages not supported in this config")
@@ -213,7 +210,6 @@ func (c *Config) GetKeysForPage(pageName string) ([]KeyConfig, error) {
 		return c.Keys, nil
 	}
 
-	// New format - lookup the page
 	keys, ok := c.Pages[pageName]
 	if !ok {
 		return nil, fmt.Errorf("page %s not found", pageName)

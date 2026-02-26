@@ -43,36 +43,27 @@ Currently only `NotoEmoji-Regular.tff` is included with the module. You can load
 
 ```json
 {
-  "services": [
-    {
-      "name": "streamdeck",
-      "api": "rdk:service:generic",
-      "model": "michaellee1019:viam-streamdeck:streamdeck-original",
-      "attributes": {
-        "brightness": 100,
-        "assets": {
-          "fonts": [
-            "/absolute/path/to/custom-font.ttf",
-            "/Users/yourname/.fonts"
-          ],
-          "images": [
-            "/absolute/path/to/custom-image.jpg",
-            "/Users/yourname/images"
-          ]
-        },
-        "keys": [
-          {
-            "key": 0,
-            "component": "my-component",
-            "method": "do_command",
-            "text": "Custom",
-            "text_font": "custom-font.ttf",
-            "image": "logo.png"
-          }
-        ]
+   "brightness":100,
+   "assets":{
+      "fonts":[
+         "/absolute/path/to/custom-font.ttf",
+         "/Users/yourname/.fonts"
+      ],
+      "images":[
+         "/absolute/path/to/custom-image.jpg",
+         "/Users/yourname/images"
+      ]
+   },
+   "keys":[
+      {
+         "key":0,
+         "component":"my-component",
+         "method":"do_command",
+         "text":"Custom",
+         "text_font":"custom-font.ttf",
+         "image":"logo.png"
       }
-    }
-  ]
+   ]
 }
 ```
 

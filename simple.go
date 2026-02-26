@@ -74,7 +74,13 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		return nil, err
 	}
 
-	err = sdc.updateKeys(ctx, conf.Keys)
+	// Initialize with appropriate keys
+	if len(conf.Pages) > 0 {
+		sdc.currentPage = conf.InitialPage
+		logger.Debugf("Initializing with page: %s", sdc.currentPage)
+	}
+
+	err = sdc.updateKeys(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +119,7 @@ func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.D
 		return err
 	}
 
-	return sdc.updateKeys(ctx, newConf.Keys)
+	return sdc.updateKeys(ctx)
 }
 
 type streamdeckComponent struct {
@@ -127,6 +133,8 @@ type streamdeckComponent struct {
 	deps       resource.Dependencies
 	conf       *Config
 	keys       map[int]KeyConfig
+
+	currentPage string
 
 	closed atomic.Int32
 }
@@ -189,7 +197,6 @@ func (sdc *streamdeckComponent) isSelfReference(componentName string) bool {
 }
 
 func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
-	// Check if component exists in deps or is a self-reference
 	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok && !sdc.isSelfReference(k.Component) {
 		sdc.logger.Warnf("missing component %v deps: %v", k.Component, sdc.deps)
@@ -269,7 +276,28 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	return fmt.Errorf("nothing to display for key %v", k)
 }
 
-func (sdc *streamdeckComponent) updateKeys(ctx context.Context, keys []KeyConfig) error {
+// applyKeys renders the given keys on the Stream Deck, clearing any
+// previously displayed keys that aren't in the new set.
+func (sdc *streamdeckComponent) applyKeys(ctx context.Context, keys []KeyConfig) error {
+	newKeyIndices := make(map[int]bool)
+	for _, k := range keys {
+		newKeyIndices[k.Key] = true
+	}
+
+	// Clear any keys that are currently configured but not in the new set
+	for keyIdx := range sdc.keys {
+		if !newKeyIndices[keyIdx] {
+			// Clear this key from the display
+			err := sdc.sd.ClearBtn(keyIdx)
+			if err != nil {
+				sdc.logger.Errorf("failed to clear key %d: %v", keyIdx, err)
+			}
+			// Remove from internal cache
+			delete(sdc.keys, keyIdx)
+		}
+	}
+
+	// Apply all the new keys
 	for _, k := range keys {
 		err := sdc.updateKey(ctx, k)
 		if err != nil {
@@ -278,6 +306,32 @@ func (sdc *streamdeckComponent) updateKeys(ctx context.Context, keys []KeyConfig
 		sdc.keys[k.Key] = k
 	}
 	return nil
+}
+
+// updateKeys resolves which keys should be displayed based on the current
+// config (keys vs pages) and applies them.
+func (sdc *streamdeckComponent) updateKeys(ctx context.Context) error {
+	var keysToLoad []KeyConfig
+	if len(sdc.conf.Keys) > 0 {
+		keysToLoad = sdc.conf.Keys
+		sdc.currentPage = ""
+	} else if len(sdc.conf.Pages) > 0 {
+		if sdc.currentPage != "" {
+			var err error
+			keysToLoad, err = sdc.conf.GetKeysForPage(sdc.currentPage)
+			if err != nil {
+				// Current page no longer exists, switch to initial_page
+				sdc.currentPage = sdc.conf.InitialPage
+				keysToLoad, _ = sdc.conf.GetKeysForPage(sdc.currentPage)
+			}
+		} else {
+			// No current page set, use initial_page
+			sdc.currentPage = sdc.conf.InitialPage
+			keysToLoad, _ = sdc.conf.GetKeysForPage(sdc.currentPage)
+		}
+	}
+
+	return sdc.applyKeys(ctx, keysToLoad)
 }
 
 func (sdc *streamdeckComponent) findSwitchArg(k KeyConfig) (uint32, error) {
@@ -466,6 +520,19 @@ func (sdc *streamdeckComponent) Close(ctx context.Context) error {
 }
 
 func (sdc *streamdeckComponent) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	// Check for set_page command
+	if pageName, ok := cmd["set_page"].(string); ok {
+		err := sdc.setPage(ctx, pageName)
+		if err != nil {
+			return nil, err
+		}
+
+		return map[string]interface{}{
+			"success": true,
+			"page":    pageName,
+		}, nil
+	}
+
 	if updateData, ok := cmd["update_display"]; ok {
 		updateMap, ok := updateData.(map[string]interface{})
 		if !ok {
@@ -474,7 +541,33 @@ func (sdc *streamdeckComponent) DoCommand(ctx context.Context, cmd map[string]in
 		return sdc.handleUpdateDisplay(ctx, updateMap)
 	}
 
-	return nil, fmt.Errorf("unknown command, supported commands: update_display")
+	return nil, fmt.Errorf("unknown command, supported commands: set_page, update_display")
+}
+
+func (sdc *streamdeckComponent) setPage(ctx context.Context, pageName string) error {
+	sdc.configLock.Lock()
+	defer sdc.configLock.Unlock()
+
+	// Validate the page exists
+	keys, err := sdc.conf.GetKeysForPage(pageName)
+	if err != nil {
+		return err
+	}
+
+	// Clear all buttons
+	err = sdc.sd.ClearAllBtns()
+	if err != nil {
+		return fmt.Errorf("failed to clear buttons: %w", err)
+	}
+
+	// Clear the current keys map
+	sdc.keys = map[int]KeyConfig{}
+
+	// Update to the new page
+	sdc.currentPage = pageName
+
+	// Load the new keys
+	return sdc.applyKeys(ctx, keys)
 }
 
 func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {

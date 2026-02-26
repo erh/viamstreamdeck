@@ -85,10 +85,12 @@ type AssetsConfig struct {
 }
 
 type Config struct {
-	Brightness int
-	Keys       []KeyConfig
-	Dials      []DialConfig
-	Assets     *AssetsConfig `json:"assets,omitempty"`
+	Brightness  int
+	Keys        []KeyConfig            `json:"keys,omitempty"`
+	Pages       map[string][]KeyConfig `json:"pages,omitempty"`
+	InitialPage string                 `json:"initial_page,omitempty"`
+	Dials       []DialConfig
+	Assets      *AssetsConfig          `json:"assets,omitempty"`
 }
 
 type UpdateDisplayCommand struct {
@@ -127,6 +129,16 @@ func (c *Config) Validate(p string) ([]string, []string, error) {
 
 	ret := []string{}
 
+	// Validate that we have either Keys or Pages, but not both
+	if len(c.Keys) > 0 && len(c.Pages) > 0 {
+		return nil, nil, fmt.Errorf("cannot specify both 'keys' and 'pages' in config")
+	}
+
+	// If neither is specified, that's an error
+	if len(c.Keys) == 0 && len(c.Pages) == 0 {
+		return nil, nil, fmt.Errorf("must specify either 'keys' or 'pages' in config")
+	}
+
 	for _, k := range c.Keys {
 		err := k.Validate()
 		if err != nil {
@@ -136,9 +148,35 @@ func (c *Config) Validate(p string) ([]string, []string, error) {
 		if !slices.Contains(ret, k.Component) {
 			ret = append(ret, k.Component)
 		}
-
 	}
 
+	for pageName, keys := range c.Pages {
+		if pageName == "" {
+			return nil, nil, fmt.Errorf("page name cannot be empty")
+		}
+		for _, k := range keys {
+			err := k.Validate()
+			if err != nil {
+				return nil, nil, fmt.Errorf("page %s: %w", pageName, err)
+			}
+
+			if !slices.Contains(ret, k.Component) {
+				ret = append(ret, k.Component)
+			}
+		}
+	}
+
+	// Validate initial_page - required when using pages
+	if len(c.Pages) > 0 {
+		if c.InitialPage == "" {
+			return nil, nil, fmt.Errorf("initial_page is required when using pages")
+		}
+		if _, ok := c.Pages[c.InitialPage]; !ok {
+			return nil, nil, fmt.Errorf("initial_page '%s' not found in pages", c.InitialPage)
+		}
+	}
+
+	// Validate dials
 	for _, d := range c.Dials {
 		err := d.Validate()
 		if err != nil {
@@ -148,8 +186,33 @@ func (c *Config) Validate(p string) ([]string, []string, error) {
 		if !slices.Contains(ret, d.Component) {
 			ret = append(ret, d.Component)
 		}
-
 	}
 
 	return nil, ret, nil
+}
+
+// GetPageNames returns a sorted list of page names
+func (c *Config) GetPageNames() []string {
+	names := make([]string, 0, len(c.Pages))
+	for name := range c.Pages {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+// GetKeysForPage returns the keys for the given page
+func (c *Config) GetKeysForPage(pageName string) ([]KeyConfig, error) {
+	if len(c.Keys) > 0 {
+		if pageName != "" {
+			return nil, fmt.Errorf("pages not supported in this config")
+		}
+		return c.Keys, nil
+	}
+
+	keys, ok := c.Pages[pageName]
+	if !ok {
+		return nil, fmt.Errorf("page %s not found", pageName)
+	}
+	return keys, nil
 }

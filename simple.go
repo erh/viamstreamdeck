@@ -475,12 +475,24 @@ func (sdc *streamdeckComponent) handleDialTurn(ctx context.Context, s streamdeck
 	if err != nil {
 		return err
 	}
-	res, err := r.DoCommand(ctx, map[string]interface{}{c: float64(s.DialPos[which])})
-	if err != nil {
-		return err
+
+	switch c {
+	case "DoCommand":
+		res, err := r.DoCommand(ctx, map[string]any{c: float64(s.DialPos[which])})
+		if err != nil {
+			return err
+		}
+		sdc.logger.Infof("res: %v", res)
+		return nil
+	case "SetPosition":
+		sw, ok := r.(toggleswitch.Switch)
+		if !ok {
+			return fmt.Errorf("resource %v is not a switch", r)
+		}
+		return sw.SetPosition(ctx, uint32(s.DialPos[which]), nil)
 	}
-	sdc.logger.Infof("res: %v", res)
-	return nil
+
+	return fmt.Errorf("can't handle command %v", c)
 }
 
 func (sdc *streamdeckComponent) HandleEvent(ctx context.Context, s streamdeck.State, e streamdeck.Event) error {

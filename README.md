@@ -22,8 +22,10 @@ Integration with Elgato StreamDeck
              }
   ]
 }
+```
 
-### choosing a font
+### choose a font
+
 ```json
 {
   "brightness" : 100, // 0 -> 100
@@ -136,6 +138,20 @@ For Stream Decks with dials (like the Stream Deck+), you can update dial configu
 **Available dial properties:**
 - `component` - Component to call when dial is turned
 - `command` - Command to execute on the component
+
+#### Dial example
+
+```json
+{
+  "dials": [
+    {
+      "dial": 0,
+      "component": "foo",
+      "command": "SetPosition"
+    }
+  ]
+}
+```
 
 #### Combining Updates
 

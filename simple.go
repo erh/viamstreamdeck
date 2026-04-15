@@ -531,6 +531,10 @@ func (sdc *streamdeckComponent) Close(ctx context.Context) error {
 	return multierr.Combine(sdc.sd.ClearAllBtns(), sdc.sd.Close())
 }
 
+func (sdc *streamdeckComponent) Status(ctx context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
+
 func (sdc *streamdeckComponent) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
 	// Check for set_page command
 	if pageName, ok := cmd["set_page"].(string); ok {

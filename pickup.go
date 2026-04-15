@@ -192,6 +192,10 @@ func (p *Pickup) DoCommand(ctx context.Context, cmd map[string]interface{}) (map
 	return nil, nil
 }
 
+func (p *Pickup) Status(ctx context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
+
 func (p *Pickup) Prep(ctx context.Context) error {
 	if p.conf.Brightness > 0 {
 		err := p.sd.SetBrightness(p.conf.Brightness)

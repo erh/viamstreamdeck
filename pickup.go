@@ -136,6 +136,7 @@ func NewPickup(ctx context.Context, name resource.Name, deps resource.Dependenci
 	}
 
 	// keep this last so we don't have to close it
+	routeStandardLog(logger)
 	p.sd, err = streamdeck.NewStreamDeckWithConfig(&ms.Conf, "")
 	if err != nil {
 		return nil, err

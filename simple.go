@@ -57,6 +57,7 @@ func NewStreamDeck(ctx context.Context, name resource.Name, deps resource.Depend
 		keys:   map[int]KeyConfig{},
 	}
 
+	routeStandardLog(logger)
 	sdc.sd, err = streamdeck.NewStreamDeckWithConfig(&ms.Conf, "")
 	if err != nil && ms == ModelOriginal {
 		// original vs original2 is confusing, try it

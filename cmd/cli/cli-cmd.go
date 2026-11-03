@@ -100,3 +100,7 @@ func (tt *TestThing) DoCommand(ctx context.Context, cmd map[string]interface{}) 
 func (tt *TestThing) Name() resource.Name {
 	return tt.name
 }
+
+func (tt *TestThing) Status(ctx context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}

@@ -3,6 +3,7 @@ package viamstreamdeck
 import (
 	"context"
 	"fmt"
+	"image"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -123,12 +124,25 @@ func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.D
 	return sdc.updateKeys(ctx)
 }
 
+// deck is the subset of *streamdeck.StreamDeck that the component draws with.
+// Tests substitute a fake.
+type deck interface {
+	SetBtnEventCb(streamdeck.BtnEvent)
+	SetBrightness(uint16) error
+	ClearBtn(int) error
+	ClearAllBtns() error
+	FillImage(int, image.Image) error
+	WriteText(int, streamdeck.TextButton) error
+	WriteTextOnImage(int, image.Image, []streamdeck.TextLine) error
+	Close() error
+}
+
 type streamdeckComponent struct {
 	name   resource.Name
 	logger logging.Logger
 	ms     *ModelSetup
 
-	sd *streamdeck.StreamDeck
+	sd deck
 
 	configLock sync.Mutex
 	deps       resource.Dependencies

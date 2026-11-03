@@ -241,7 +241,7 @@ func (p *Pickup) imageAndChangeButtonsInLock(ctx context.Context) error {
 
 	for idx, o := range objs {
 		if (idx + 1) >= p.ms.Conf.NumButtons() {
-			p.logger.Info("too many objects %d %v", idx, o)
+			p.logger.Infof("too many objects %d %v", idx, o)
 			continue
 		}
 		img := touch.PCToImage(o)

@@ -3,6 +3,8 @@ package viamstreamdeck
 import (
 	"context"
 	"fmt"
+	"image"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -123,12 +125,25 @@ func (sdc *streamdeckComponent) reconfigure(ctx context.Context, deps resource.D
 	return sdc.updateKeys(ctx)
 }
 
+// deck is the subset of *streamdeck.StreamDeck that the component draws with.
+// Tests substitute a fake.
+type deck interface {
+	SetBtnEventCb(streamdeck.BtnEvent)
+	SetBrightness(uint16) error
+	ClearBtn(int) error
+	ClearAllBtns() error
+	FillImage(int, image.Image) error
+	WriteText(int, streamdeck.TextButton) error
+	WriteTextOnImage(int, image.Image, []streamdeck.TextLine) error
+	Close() error
+}
+
 type streamdeckComponent struct {
 	name   resource.Name
 	logger logging.Logger
 	ms     *ModelSetup
 
-	sd *streamdeck.StreamDeck
+	sd deck
 
 	configLock sync.Mutex
 	deps       resource.Dependencies
@@ -197,65 +212,73 @@ func (sdc *streamdeckComponent) isSelfReference(componentName string) bool {
 	return componentName == sdc.name.ShortName()
 }
 
-func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
+// renderKey works out what a key should show, resolving anything it needs from
+// the component it points at, but does not touch the deck. It returns a func
+// that draws the result, or an error if the key can't be drawn. updateKey draws
+// immediately; update_display uses it to vet a key on a page that isn't showing.
+func (sdc *streamdeckComponent) renderKey(ctx context.Context, k KeyConfig) (func() error, error) {
 	_, ok := vmodutils.FindDep(sdc.deps, k.Component)
 	if !ok && !sdc.isSelfReference(k.Component) {
 		sdc.logger.Warnf("missing component %v deps: %v", k.Component, sdc.deps)
 
 		img, ok := assetImages["x.jpg"]
 		if !ok {
-			return fmt.Errorf("can't find dependency %s nore, the x image :(", k.Component)
+			return nil, fmt.Errorf("can't find dependency %s nore, the x image :(", k.Component)
 		}
 
-		return sdc.sd.WriteTextOnImage(
-			k.Key,
-			img,
-			[]streamdeck.TextLine{{Text: k.Component, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor("black", "black")}},
-		)
+		return func() error {
+			return sdc.sd.WriteTextOnImage(
+				k.Key,
+				img,
+				[]streamdeck.TextLine{{Text: k.Component, PosX: 10, PosY: 30, FontSize: 20, FontColor: getColor("black", "black")}},
+			)
+		}, nil
 	}
 
 	if snakeToCamel(k.Method) != "DoCommand" && snakeToCamel(k.Method) != "SetPosition" {
-		return fmt.Errorf("only support DoCommand and SetPosition now, not %s", k.Method)
+		return nil, fmt.Errorf("only support DoCommand and SetPosition now, not %s", k.Method)
 	}
 
 	if k.Image != "" {
 		img, ok := assetImages[k.Image]
 		if ok {
 			if k.Text != "" {
-				return sdc.sd.WriteTextOnImage(
-					k.Key,
-					img,
-					sdc.ms.SimpleText(k.Text, k.TextColor, k.TextFont),
-				)
+				return func() error {
+					return sdc.sd.WriteTextOnImage(
+						k.Key,
+						img,
+						sdc.ms.SimpleText(k.Text, k.TextColor, k.TextFont),
+					)
+				}, nil
 			}
-			return sdc.sd.FillImage(k.Key, img)
+			return func() error { return sdc.sd.FillImage(k.Key, img) }, nil
 		}
-		return fmt.Errorf("unknown image [%s]", k.Image)
+		return nil, fmt.Errorf("unknown image [%s]", k.Image)
 	}
 
 	if k.Text == "" && snakeToCamel(k.Method) == "SetPosition" {
 		s, err := sdc.findSwitch(ctx, k.Component)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		_, names, err := s.GetNumberOfPositions(ctx, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		n, err := sdc.findSwitchArg(k)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if n < 0 || int(n) >= len(names) {
-			return fmt.Errorf("invalid position %d", n)
+			return nil, fmt.Errorf("invalid position %d", n)
 		}
 
 		if k.Color == "" && k.TextColor == "" {
 			pos, err := s.GetPosition(ctx, nil)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if pos == n {
@@ -271,10 +294,20 @@ func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) erro
 	}
 
 	if k.Text != "" {
-		return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor, k.TextFont))
+		return func() error {
+			return sdc.sd.WriteText(k.Key, sdc.ms.SimpleTextButton(k.Text, k.Color, k.TextColor, k.TextFont))
+		}, nil
 	}
 
-	return fmt.Errorf("nothing to display for key %v", k)
+	return nil, fmt.Errorf("nothing to display for key %v", k)
+}
+
+func (sdc *streamdeckComponent) updateKey(ctx context.Context, k KeyConfig) error {
+	draw, err := sdc.renderKey(ctx, k)
+	if err != nil {
+		return err
+	}
+	return draw()
 }
 
 // applyKeys renders the given keys on the Stream Deck, clearing any
@@ -611,52 +644,10 @@ func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map
 
 	// Handle key updates
 	if updateCmd.Keys != nil {
-		updatedKeys := []int{}
-		for keyNumStr, keyConfigMap := range updateCmd.Keys {
-			keyNum := 0
-			_, err := fmt.Sscanf(keyNumStr, "%d", &keyNum)
-			if err != nil {
-				return nil, fmt.Errorf("invalid key number: %s", keyNumStr)
-			}
-
-			// Get existing key config or create new one
-			existingKey, hasExisting := sdc.keys[keyNum]
-			if !hasExisting {
-				existingKey = KeyConfig{Key: keyNum}
-			}
-
-			// Apply updates using shared helper
-			newKey, err := sdc.applyKeyUpdate(existingKey, keyConfigMap)
-			if err != nil {
-				return nil, fmt.Errorf("failed to apply updates to key %d: %w", keyNum, err)
-			}
-			newKey.Key = keyNum
-
-			// Update the key on the device
-			err = sdc.updateKey(ctx, newKey)
-			if err != nil {
-				return nil, fmt.Errorf("failed to update key %d: %w", keyNum, err)
-			}
-
-			// Update internal state
-			sdc.keys[keyNum] = newKey
-
-			// Also update the key in the config array if it exists
-			foundInConfig := false
-			for i := range sdc.conf.Keys {
-				if sdc.conf.Keys[i].Key == keyNum {
-					sdc.conf.Keys[i] = newKey
-					foundInConfig = true
-					break
-				}
-			}
-			if !foundInConfig {
-				sdc.conf.Keys = append(sdc.conf.Keys, newKey)
-			}
-
-			updatedKeys = append(updatedKeys, keyNum)
+		updatedKeys, err := sdc.handleKeyUpdates(ctx, updateCmd)
+		if err != nil {
+			return nil, err
 		}
-
 		updated["keys"] = updatedKeys
 	}
 
@@ -711,4 +702,153 @@ func (sdc *streamdeckComponent) handleUpdateDisplay(ctx context.Context, cmd map
 	}
 
 	return updated, nil
+}
+
+func (sdc *streamdeckComponent) isPaged() bool {
+	return len(sdc.conf.Pages) > 0
+}
+
+// keysOf returns the configured keys of a page, or the flat keys for "".
+func (sdc *streamdeckComponent) keysOf(pageName string) []KeyConfig {
+	if sdc.isPaged() {
+		return sdc.conf.Pages[pageName]
+	}
+	return sdc.conf.Keys
+}
+
+// updateTarget picks the page an update_display applies to: the named page, or
+// the one that is showing. A flat config has no pages and is addressed as "";
+// a `page` sent to one is ignored, as it was before the field existed.
+func (sdc *streamdeckComponent) updateTarget(page string) (string, error) {
+	if !sdc.isPaged() {
+		return "", nil
+	}
+	if page == "" {
+		return sdc.currentPage, nil
+	}
+	if _, ok := sdc.conf.Pages[page]; !ok {
+		return "", fmt.Errorf("page %s not found", page)
+	}
+	return page, nil
+}
+
+// upsertKey records a key in the config, on the given page when paged. The
+// config is what gets redrawn on a page switch and on every reconfigure, so a
+// change that isn't written here is lost.
+func (sdc *streamdeckComponent) upsertKey(pageName string, k KeyConfig) {
+	keys := sdc.keysOf(pageName)
+	for i := range keys {
+		if keys[i].Key == k.Key {
+			keys[i] = k
+			return
+		}
+	}
+	if sdc.isPaged() {
+		sdc.conf.Pages[pageName] = append(keys, k)
+	} else {
+		sdc.conf.Keys = append(sdc.conf.Keys, k)
+	}
+}
+
+// handleKeyUpdates applies the keys of an update_display. Caller holds configLock.
+//
+// A flat config applies keys one at a time, as it always has. A paged config
+// vets every key before applying any, so a rejected update changes nothing. A
+// key on the page that is showing is drawn now; a key on any other page is only
+// recorded, and is drawn when that page is shown.
+func (sdc *streamdeckComponent) handleKeyUpdates(ctx context.Context, cmd UpdateDisplayCommand) ([]int, error) {
+	pageName, err := sdc.updateTarget(cmd.Page)
+	if err != nil {
+		return nil, err
+	}
+	showing := pageName == sdc.currentPage
+	pageKeys := sdc.keysOf(pageName)
+
+	type planned struct {
+		key  KeyConfig
+		draw func() error
+	}
+	var plans []planned
+	seen := map[int]bool{}
+
+	commit := func(p planned) error {
+		if showing {
+			if err := p.draw(); err != nil {
+				return fmt.Errorf("failed to update key %d: %w", p.key.Key, err)
+			}
+			sdc.keys[p.key.Key] = p.key
+		}
+		sdc.upsertKey(pageName, p.key)
+		return nil
+	}
+
+	refs := make([]string, 0, len(cmd.Keys))
+	for ref := range cmd.Keys {
+		refs = append(refs, ref)
+	}
+	sort.Strings(refs) // so errors and commit order don't depend on map order
+
+	updatedKeys := []int{}
+	for _, ref := range refs {
+		fields := cmd.Keys[ref]
+		keyNum, err := resolveKeyRef(ref, pageKeys, !sdc.isPaged())
+		if err != nil {
+			return nil, err
+		}
+
+		var existing KeyConfig
+		var hasExisting bool
+		if showing {
+			existing, hasExisting = sdc.keys[keyNum]
+		} else {
+			for _, k := range pageKeys {
+				if k.Key == keyNum {
+					existing, hasExisting = k, true
+					break
+				}
+			}
+			if !hasExisting {
+				return nil, fmt.Errorf("page %s has no key %d; keys can only be added to the page that is showing", pageName, keyNum)
+			}
+		}
+		if !hasExisting {
+			existing = KeyConfig{Key: keyNum}
+		}
+
+		newKey, err := sdc.applyKeyUpdate(existing, fields)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply updates to key %d: %w", keyNum, err)
+		}
+		newKey.Key = keyNum
+
+		if !sdc.isPaged() {
+			err = sdc.updateKey(ctx, newKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to update key %d: %w", keyNum, err)
+			}
+			sdc.keys[keyNum] = newKey
+			sdc.upsertKey(pageName, newKey)
+			updatedKeys = append(updatedKeys, keyNum)
+			continue
+		}
+
+		if seen[keyNum] {
+			return nil, fmt.Errorf("key %d is addressed more than once", keyNum)
+		}
+		seen[keyNum] = true
+
+		draw, err := sdc.renderKey(ctx, newKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update key %d: %w", keyNum, err)
+		}
+		plans = append(plans, planned{newKey, draw})
+		updatedKeys = append(updatedKeys, keyNum)
+	}
+
+	for _, p := range plans {
+		if err := commit(p); err != nil {
+			return nil, err
+		}
+	}
+	return updatedKeys, nil
 }

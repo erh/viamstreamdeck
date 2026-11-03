@@ -15,6 +15,9 @@ func snakeToCamel(s string) string {
 	result := ""
 
 	for _, part := range parts {
+		if part == "" {
+			continue
+		}
 		result += strings.ToUpper(string(part[0])) + part[1:]
 	}
 

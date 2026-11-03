@@ -118,6 +118,34 @@ You can update individual keys by specifying the key number and the properties t
 - `method` - Method to call on the component
 - `args` - Array of arguments to pass to the method
 
+#### Addressing Keys by Name
+
+A key can carry an optional `name` in its config. `update_display` accepts either the key's number or its name wherever it refers to a key, so callers don't depend on where a key sits on the deck.
+
+```json
+{
+  "keys": [
+    { "key": 0, "name": "status", "text": "Idle", "component": "foo", "method": "do_command" }
+  ]
+}
+```
+
+```json
+{
+  "update_display": {
+    "keys": {
+      "status": { "text": "Running", "color": "green" }
+    }
+  }
+}
+```
+
+- With a `keys` list, a reference that starts with a number is that key number, as before, so `"4abc"` is key 4. Anything else is looked up as a name, so a name that starts with a number can't be used.
+- With `pages`, only a whole number is a key number. Anything else is looked up as a name, so `"4abc"` is an error unless a key has that name, and a key named `"4"` can only be reached as key 4.
+- Names are only looked up among the keys of the page or key list being updated, and a name used by more than one key there is an error.
+- `name` is optional and is never validated when the config loads, so it cannot make an existing config fail. It cannot be changed by `update_display`.
+- A reference that is neither a key number nor the name of a key is an error.
+
 #### Updating Dials
 
 For Stream Decks with dials (like the Stream Deck+), you can update dial configurations:
@@ -270,6 +298,38 @@ Instead of a flat list of keys, you can organize keys into named pages and switc
 ```
 
 You cannot use `keys` and `pages` at the same time.
+
+#### Updating pages with update_display
+
+With `pages` configured, `update_display` edits a page instead of the flat key list, and `set_page` keeps working afterwards. Add `page` to choose which page to update. Without it, the update goes to the page that is showing.
+
+```json
+{
+  "update_display": {
+    "page": "other",
+    "keys": {
+      "1": { "text": "Done", "color": "green" }
+    }
+  }
+}
+```
+
+- A change to the page that is showing is drawn immediately. A change to any other page is kept and drawn when that page is shown, so a page you can't see stays current.
+- The update is checked when it is sent. If any key could not be drawn, for example an unknown `image`, an unsupported `method`, a `SetPosition` key whose position doesn't exist, or a key with nothing to display, the whole update is rejected before anything is drawn or changed, instead of failing later when someone switches to that page. If the deck itself fails partway through an update, for example because it is unplugged, the keys already applied stay applied. A key that points at a component that isn't present is not an error; it shows the crossed-circle image, as it does on every page.
+- A key can only be added to the page that is showing. Updating a key that a hidden page doesn't have is an error.
+- Updates last until the component is reconfigured, which resets the pages to the configured ones, as with flat `keys`.
+- `brightness` and `dials` apply to the whole deck. `page` only affects `keys`, and is ignored by a config that uses `keys` instead of `pages`.
+- The response is the same as for flat configs: the key numbers that were updated.
+
+#### Behavior changes
+
+A config that uses `keys` behaves as it did before. One thing is different:
+
+| Case | Before | Now |
+| --- | --- | --- |
+| `update_display` on a config with `pages` | Added the key to a flat `keys` list, which switched the deck out of pages mode and made `set_page` fail | Edits the page and leaves pages mode alone |
+
+Configs that load today still load unchanged. Every new field (`name`, and `page` on `update_display`) is optional.
 
 ## pickup
 
